@@ -181,8 +181,50 @@
     r.style.setProperty('--fill', pct + '%');
   }
 
+  /* Browsers turn an English caption track on by themselves, and they remember that
+     choice for this site. Keep every narrated video's captions off until the learner
+     picks a caption track from the player controls. */
+  function captionsStartOff(video) {
+    var tracks = video.textTracks;
+    var applying = false;
+    var learnerChose = false;
+    var fromControls = false;
+
+    function showing() {
+      for (var i = 0; i < tracks.length; i++) {
+        if (tracks[i].mode === 'showing') return true;
+      }
+      return false;
+    }
+    function forceOff() {
+      if (learnerChose || !showing()) return;
+      applying = true;
+      for (var i = 0; i < tracks.length; i++) tracks[i].mode = 'disabled';
+      applying = false;
+    }
+
+    video.addEventListener('pointerdown', function () {
+      fromControls = true;
+      setTimeout(function () { fromControls = false; }, 800);
+    });
+    tracks.addEventListener('addtrack', forceOff);
+    tracks.addEventListener('change', function () {
+      if (applying) return;
+      if (fromControls) { learnerChose = true; return; }
+      forceOff();
+    });
+    video.addEventListener('loadedmetadata', forceOff);
+    video.addEventListener('play', function () {
+      fromControls = false;
+      forceOff();
+    });
+    setTimeout(forceOff, 0);
+    setTimeout(forceOff, 400);
+  }
+
   W.video = function (el) {
     var v = $('video', el), chaps = $$('.chap', el);
+    captionsStartOff(v);
     el.addEventListener('click', function (e) {
       var b = e.target.closest('[data-seek]'); if (!b) return;
       v.currentTime = parseFloat(b.dataset.seek); v.play();
