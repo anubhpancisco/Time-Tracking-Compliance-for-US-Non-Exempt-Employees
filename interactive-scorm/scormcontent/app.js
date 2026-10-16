@@ -100,11 +100,11 @@
     return '<section class="cover2"><header class="c-hero"><img src="assets/cover-photo.jpg" alt=""><h1>Time Tracking Compliance for<br>US Non-Exempt Employees<br>and Leaders</h1><svg class="c-wave" viewBox="0 0 1024 92" preserveAspectRatio="none" aria-hidden="true"><path fill="#f4f7fb" d="M0 31C90 58 170 78 248 76C400 72 560 46 760 28C900 16 970 12 1024 10V92H0Z"/></svg></header>' +
       '<div class="c-copy"><p class="wel">Welcome to US time tracking training!</p>' +
       '<p class="gap">This training is designed to increase awareness and understanding of time tracking responsibilities for US non-exempt employees and their leaders. The course addresses the critical business need to ensure accurate timecard submissions and approvals to comply with legal requirements under the Fair Labor Standards Act (FLSA) and Cisco&rsquo;s policies.</p>' +
-      '<p>Employee learners will gain knowledge about their non-exempt status, learn how to correctly submit and modify timecards in the Workday system, and the leadership learners will understand their role in reviewing and approving timecards.</p>' +
+      '<p>Employee learners will gain knowledge about their non-exempt status and learn how to correctly submit and modify timecards in the Workday system. Leadership learners will understand their role in reviewing, validating, and approving timecards.</p>' +
       '<p>By completing this course, employees and leaders will be equipped to perform their respective time tracking duties accurately and timely, supporting Cisco&rsquo;s commitment to legal compliance, operational efficiency, and employee well-being.</p>' +
-      '<div class="note"><p class="note-h">Important Note:</p><ul>' +
-      '<li><strong>Non-Exempt Employees:</strong> You are required to complete the core foundational modules (approximately 30 minutes) and may skip the final People Leader section.</li>' +
-      '<li><strong>People Leaders:</strong> If you manage US non-exempt employees, you must complete the entire training in full—including the dedicated Leader section—to understand both your own responsibilities and those of your team members.</li>' +
+      '<div class="note"><p class="note-h">Course Completion Guidance:</p><ul>' +
+      '<li><strong>Non-Exempt Employees:</strong> Employees should complete the core foundational sections and are not expected to undertake the People Leader lesson.</li>' +
+      '<li><strong>People Leaders:</strong> Leaders are expected to complete the entire training, including both the employee lessons and the dedicated people leader lesson. Completing the full course provides leaders with a complete understanding of the responsibilities expected of their team members, while preparing them to manage approvals and delegations effectively.</li>' +
       '</ul></div>' +
       '<p class="dur">Module Duration: Approximately 30 minutes.</p>' +
       '<button type="button" class="c-start" data-act="start">' + label + '</button></div></section>';
@@ -172,7 +172,6 @@
     $$('[data-pillars]').forEach(function (el) { W.pillars(el, L[i].data.pillars); });
     $$('[data-pipe]').forEach(function (el) { W.pipe(el, L[i].data.status); });
     $$('[data-explorer]').forEach(W.explorer);
-    $$('[data-sort]').forEach(W.sort);
     $$('[data-quiz]').forEach(function (el) { W.quiz(el, i); });
   }
   function setIcon(el, name, html) { el.innerHTML = ic(name) + '<span>' + html + '</span>'; }
@@ -208,16 +207,51 @@
 
   W.tabs = function (el) {
     function pick(b) {
-      $$('.tab', el).forEach(function (t) { t.setAttribute('aria-selected', t === b ? 'true' : 'false'); });
-      $$('.tabpanel', el).forEach(function (p) { p.hidden = p.dataset.p !== b.dataset.t; });
-      noteSeen($$('.tab', el), b);
+      if (!b || b.getAttribute('aria-selected') === 'true') return;
+      $$('.tab', el).forEach(function (t) {
+        var on = t === b;
+        t.setAttribute('aria-selected', on ? 'true' : 'false');
+        t.tabIndex = on ? 0 : -1;
+      });
+      $$('.tabpanel', el).forEach(function (p) {
+        var on = p.dataset.p === b.dataset.t;
+        if (!on) $$('video', p).forEach(function (v) { v.pause(); });
+        p.hidden = !on;
+        if (on) $$('video', p).forEach(function (v) {
+          if (v.getAttribute('preload') === 'none') { v.preload = 'metadata'; v.load(); }
+        });
+      });
+      if (!el.classList.contains('walks')) noteSeen($$('.tab', el), b);
     }
     el.addEventListener('click', function (e) {
       var b = e.target.closest('.tab'); if (!b || !el.contains(b)) return;
       pick(b);
     });
-    var first = $('.tab[aria-selected="true"]', el) || $('.tab', el);
-    if (first) noteSeen($$('.tab', el), first);
+    el.addEventListener('keydown', function (e) {
+      var b = e.target.closest('.tab'); if (!b || !el.contains(b)) return;
+      var tabs = $$('.tab', el), i = tabs.indexOf(b), to = -1;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') to = (i + 1) % tabs.length;
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') to = (i - 1 + tabs.length) % tabs.length;
+      else if (e.key === 'Home') to = 0;
+      else if (e.key === 'End') to = tabs.length - 1;
+      else return;
+      e.preventDefault();
+      pick(tabs[to]);
+      tabs[to].focus();
+    });
+    if (el.classList.contains('walks')) {
+      $$('.tabpanel', el).forEach(function (p) {
+        var v = $('video', p);
+        if (!v) return;
+        v.addEventListener('play', function () {
+          var tab = $('.tab[data-t="' + p.dataset.p + '"]', el);
+          if (tab) tab.classList.add('is-watched');
+        });
+      });
+    } else {
+      var first = $('.tab[aria-selected="true"]', el) || $('.tab', el);
+      if (first) noteSeen($$('.tab', el), first);
+    }
   };
 
   W.pillars = function (el, texts) {
@@ -360,40 +394,6 @@
       if (e.target.closest('[data-fix]')) { s.t = Math.max(0, STD - s.w); draw(); }
     });
     draw();
-  };
-
-  /* --- Vidcast walkthroughs (load only on click) --- */
-  document.addEventListener('click', function (e) {
-    var b = e.target.closest('[data-act="walk"]'); if (!b) return;
-    var box = b.closest('.walk'), f = document.createElement('iframe');
-    f.src = box.dataset.walk; f.title = box.dataset.title; f.allow = 'fullscreen'; f.setAttribute('allowfullscreen', '');
-    box.replaceChild(f, b);
-  });
-
-  /* --- sort game --- */
-  W.sort = function (el) {
-    var items = window.SORT.slice(), sel = -1, wrong = 0, order = items.map(function (_, k) { return k; });
-    for (var a = order.length - 1; a > 0; a--) { var j = Math.floor(Math.random() * (a + 1)), t = order[a]; order[a] = order[j]; order[j] = t; }
-    el.innerHTML = window.H.how('pointer', 'Click', 'a responsibility card, then click the column where it belongs.') + '<div class="sort-bins"><button type="button" class="bin emp" data-bin="emp"><h4><span class="ico" style="margin:0;width:38px;height:38px;font-size:19px">' + ic('user') + '</span>Employee</h4><div class="placed"></div></button><button type="button" class="bin lead" data-bin="lead"><h4><span class="ico sky" style="margin:0;width:38px;height:38px;font-size:19px">' + ic('users') + '</span>Leader</h4><div class="placed"></div></button></div><div class="tray" data-tray></div><div class="sort-msg" data-msg aria-live="polite"></div>';
-    var tray = $('[data-tray]', el), msg = $('[data-msg]', el);
-    order.forEach(function (k) { var c = document.createElement('button'); c.type = 'button'; c.className = 'scard'; c.dataset.k = k; c.textContent = items[k].t; tray.appendChild(c); });
-    function say(kind, html) { msg.innerHTML = '<div class="verdict ' + kind + '" style="margin:0">' + ic(kind === 'good' ? 'check-circle' : 'info') + '<span></span></div>'; $('span', msg).textContent = html; }
-    say('good', 'Pick a card to begin.');
-    el.addEventListener('click', function (e) {
-      var c = e.target.closest('.scard');
-      if (c) { sel = +c.dataset.k; $$('.scard', el).forEach(function (x) { x.classList.toggle('sel', x === c); }); $$('.bin', el).forEach(function (b) { b.classList.add('ready'); }); return; }
-      var bin = e.target.closest('.bin'); if (!bin) return;
-      if (sel < 0) { say('warn', 'Pick a card from the tray first.'); return; }
-      var it = items[sel], card = $('.scard[data-k="' + sel + '"]', el);
-      if (it.bin === bin.dataset.bin) {
-        var d = document.createElement('div'); d.textContent = it.t; $('.placed', bin).appendChild(d); card.remove(); say('good', 'Correct. ' + it.why); sel = -1;
-        $$('.bin', el).forEach(function (b) { b.classList.remove('ready'); });
-        if (!$('.scard', el)) { say('good', wrong === 0 ? 'Perfect sort: every responsibility in the right place.' : 'All sorted. You needed ' + wrong + ' retr' + (wrong === 1 ? 'y' : 'ies') + ', and the reasons above are worth remembering.'); }
-      } else {
-        wrong++; card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake');
-        say('warn', 'Not quite. This one belongs to the ' + (it.bin === 'lead' ? 'Leader' : 'Employee') + ': ' + it.why);
-      }
-    });
   };
 
   /* --- coached quiz --- */
