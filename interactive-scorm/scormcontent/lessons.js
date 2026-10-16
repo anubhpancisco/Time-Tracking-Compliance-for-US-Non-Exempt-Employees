@@ -20,7 +20,7 @@
     if (!v) return '';
     var chapters = (v.chapters || []).map(function (c) { return '<button type="button" class="chap" data-seek="' + c.start + '">' + c.label + '</button>'; }).join('');
     var tr = (v.transcript || []).map(function (t) { return '<p>' + t + '</p>'; }).join('');
-    return '<div class="band rv"><div class="vid-title">' + ic('play') + ' ' + title + '<span class="hint">Press play. Captions are on.</span></div><div class="vid" data-video="' + id + '"><video controls preload="metadata" playsinline poster="media/' + id + '-poster.jpg"><source src="media/' + id + '.mp4" type="video/mp4"><track kind="captions" srclang="en" label="English" src="media/' + id + '.vtt" default></video>' +
+    return '<div class="band rv"><div class="vid-title">' + ic('play') + ' ' + title + '<span class="hint">Press play. Turn on captions from the player controls if you want them.</span></div><div class="vid" data-video="' + id + '"><video controls preload="metadata" playsinline poster="media/' + id + '-poster.jpg"><source src="media/' + id + '.mp4" type="video/mp4"><track kind="captions" srclang="en" label="English" src="media/' + id + '.vtt"></video>' +
       '<div class="bar"><span class="lbl">Click to jump to</span>' + chapters + '</div></div>' +
       '<details class="transcript"><summary>' + ic('file') + '<span><b>Video Transcript</b></span></summary><div class="tr-body">' + tr + '</div></details></div>';
   }
