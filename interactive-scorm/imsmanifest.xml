@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest identifier="time-tracking-compliance-us-non-exempt" version="1.0"
+  xmlns="http://www.imsglobal.org/xsd/imscp_v1p1"
+  xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_v1p3"
+  xmlns:adlseq="http://www.adlnet.org/xsd/adlseq_v1p3"
+  xmlns:adlnav="http://www.adlnet.org/xsd/adlnav_v1p3"
+  xmlns:imsss="http://www.imsglobal.org/xsd/imsss"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.imsglobal.org/xsd/imscp_v1p1 imscp_v1p1.xsd http://www.adlnet.org/xsd/adlcp_v1p3 adlcp_v1p3.xsd http://www.adlnet.org/xsd/adlseq_v1p3 adlseq_v1p3.xsd http://www.adlnet.org/xsd/adlnav_v1p3 adlnav_v1p3.xsd http://www.imsglobal.org/xsd/imsss imsss_v1p0.xsd">
+  <metadata>
+    <schema>ADL SCORM</schema>
+    <schemaversion>2004 3rd Edition</schemaversion>
+  </metadata>
+  <organizations default="org-1">
+    <organization identifier="org-1" adlseq:objectivesGlobalToSystem="false">
+      <title>Time Tracking Compliance for US Non-Exempt Employees and Leaders</title>
+      <item identifier="item-1" identifierref="sco-1" isvisible="true">
+        <title>Time Tracking Compliance for US Non-Exempt Employees and Leaders</title>
+        <imsss:sequencing>
+          <imsss:deliveryControls tracked="true" completionSetByContent="true" objectiveSetByContent="false"/>
+        </imsss:sequencing>
+      </item>
+      <imsss:sequencing>
+        <imsss:controlMode choice="true" flow="true"/>
+      </imsss:sequencing>
+    </organization>
+  </organizations>
+  <resources>
+    <resource identifier="sco-1" type="webcontent" adlcp:scormType="sco" href="scormcontent/index.html">
+      <file href="ScormEnginePackageProperties.xml"/>
+      <file href="scormcontent/app.js"/>
+      <file href="scormcontent/assets/Screenshot 2026-08-05 at 9.jpg"/>
+      <file href="scormcontent/assets/Screenshot 2026-08-10 at 2.png"/>
+      <file href="scormcontent/assets/Screenshot 2026-08-10 at 3.jpg"/>
+      <file href="scormcontent/assets/Screenshot 2026-08-11 at 4-1.jpg"/>
+      <file href="scormcontent/assets/Screenshot 2026-08-11 at 4.jpg"/>
+      <file href="scormcontent/assets/Screenshot 2026-09-28 at 7.jpg"/>
+      <file href="scormcontent/assets/Screenshot 2026-09-28 at 7.png"/>
+      <file href="scormcontent/assets/cover-photo.jpg"/>
+      <file href="scormcontent/assets/stock-image-1.jpg"/>
+      <file href="scormcontent/assets/stock-image-2.jpg"/>
+      <file href="scormcontent/assets/stock-image-3.jpg"/>
+      <file href="scormcontent/assets/stock-image-4.jpg"/>
+      <file href="scormcontent/assets/stock-image-5.jpg"/>
+      <file href="scormcontent/fonts/Inter-Bold.woff"/>
+      <file href="scormcontent/fonts/Inter-Light.woff"/>
+      <file href="scormcontent/fonts/Inter-Medium.woff"/>
+      <file href="scormcontent/fonts/Inter-Regular.woff"/>
+      <file href="scormcontent/icons.js"/>
+      <file href="scormcontent/index.html"/>
+      <file href="scormcontent/lessons.js"/>
+      <file href="scormcontent/media/alerts-poster.jpg"/>
+      <file href="scormcontent/media/alerts.mp4"/>
+      <file href="scormcontent/media/alerts.vtt"/>
+      <file href="scormcontent/media/breaks-poster.jpg"/>
+      <file href="scormcontent/media/breaks.mp4"/>
+      <file href="scormcontent/media/breaks.vtt"/>
+      <file href="scormcontent/media/leader-poster.jpg"/>
+      <file href="scormcontent/media/leader.mp4"/>
+      <file href="scormcontent/media/leader.vtt"/>
+      <file href="scormcontent/media/payroll-poster.jpg"/>
+      <file href="scormcontent/media/payroll.mp4"/>
+      <file href="scormcontent/media/payroll.vtt"/>
+      <file href="scormcontent/media/rates-poster.jpg"/>
+      <file href="scormcontent/media/rates.mp4"/>
+      <file href="scormcontent/media/rates.vtt"/>
+      <file href="scormcontent/media/timecard-poster.jpg"/>
+      <file href="scormcontent/media/timecard.mp4"/>
+      <file href="scormcontent/media/timecard.vtt"/>
+      <file href="scormcontent/media/videos.js"/>
+      <file href="scormcontent/media/welcome-poster.jpg"/>
+      <file href="scormcontent/media/welcome.mp4"/>
+      <file href="scormcontent/media/welcome.vtt"/>
+      <file href="scormcontent/media/who-poster.jpg"/>
+      <file href="scormcontent/media/who.mp4"/>
+      <file href="scormcontent/media/who.vtt"/>
+      <file href="scormcontent/media/workday-poster.jpg"/>
+      <file href="scormcontent/media/workday.mp4"/>
+      <file href="scormcontent/media/workday.vtt"/>
+      <file href="scormcontent/scorm.js"/>
+      <file href="scormcontent/styles.css"/>
+    </resource>
+  </resources>
+</manifest>

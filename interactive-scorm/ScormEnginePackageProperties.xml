@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScormEnginePackageProperties xmlns="http://www.scorm.com/xsd/ScormEnginePackageProperties">
+  <controls>
+    <statusDisplay>completion only</statusDisplay>
+  </controls>
+  <behavior>
+    <scoreRollupMode>score provided by course</scoreRollupMode>
+    <statusRollupMode>status provided by course</statusRollupMode>
+    <thresholdScoreForCompletion>0.8</thresholdScoreForCompletion>
+    <applyRollupStatusToSuccess>no</applyRollupStatusToSuccess>
+    <scoreOverridesStatus>no</scoreOverridesStatus>
+    <satisfiedCausesCompletion>no</satisfiedCausesCompletion>
+    <forceObjectiveCompletionSetByContent>yes</forceObjectiveCompletionSetByContent>
+    <scaleRawScore>yes</scaleRawScore>
+    <rollupRuntimeAtScoUnload>yes</rollupRuntimeAtScoUnload>
+    <finishCausesImmediateCommit>yes</finishCausesImmediateCommit>
+  </behavior>
+  <heuristics>
+    <isCompletionTracked>yes</isCompletionTracked>
+    <isSatisfactionTracked>no</isSatisfactionTracked>
+    <isScoreTracked>yes</isScoreTracked>
+    <isIncompleteScoreMeaningful>yes</isIncompleteScoreMeaningful>
+    <isIncompleteSatisfactionMeaningful>no</isIncompleteSatisfactionMeaningful>
+  </heuristics>
+</ScormEnginePackageProperties>
