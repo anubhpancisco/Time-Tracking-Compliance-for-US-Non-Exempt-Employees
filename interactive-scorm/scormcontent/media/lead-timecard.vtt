@@ -1,0 +1,37 @@
+WEBVTT
+
+00:00:01.450 --> 00:00:07.341
+Full-time employees see a timecard that fills itself every Monday from their standard schedule.
+
+00:00:07.341 --> 00:00:12.117
+If the hours differ, they edit the blocks that are wrong, or add extra hours.
+
+00:00:13.467 --> 00:00:17.371
+Interns and part-time employees start with an empty timecard.
+
+00:00:17.371 --> 00:00:20.827
+They create their own time blocks for each pay period.
+
+00:00:22.177 --> 00:00:24.599
+Employees submit when the hours match.
+
+00:00:24.599 --> 00:00:29.571
+If they worked overtime or the schedule changed, they edit before they submit.
+
+00:00:29.571 --> 00:00:32.886
+Later adjustments are allowed for up to ninety days.
+
+00:00:34.236 --> 00:00:41.911
+If an employee books time off after the week was auto-populated, they delete the conflicting Hours Worked entries.
+
+00:00:41.911 --> 00:00:46.018
+Combined daily recorded time cannot exceed the scheduled day.
+
+00:00:46.018 --> 00:00:47.633
+The standard is 8 hours.
+
+00:00:48.983 --> 00:00:51.822
+You manage on-call eligibility in Workday.
+
+00:00:51.822 --> 00:00:58.242
+Once an employee is eligible, they record on-call time in the on-call sections of the timecard.
