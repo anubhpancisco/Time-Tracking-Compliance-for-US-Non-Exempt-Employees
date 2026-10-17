@@ -3,15 +3,39 @@
 (function () {
   'use strict';
   var L = window.LESSONS, N = L.length, ic = window.H.ic;
+  var PATHS = {
+    emp: { ids: [0, 1, 2, 3, 4, 5, 6, 8, 9], label: 'Employee', time: 'About 30 minutes', done: 'You are finished when you have completed these 9 lessons.' },
+    lead: { ids: [0, 4, 7, 8], label: 'People Leader', time: 'About 15 minutes', done: 'You are finished when you have completed these 4 lessons.' }
+  };
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
   var stage = $('#stage'), toastEl = $('#toast');
   var state = window.SCORM.readState();
-  var cur = -1, io = null, searchIdx = null, part = 0;
+  var cur = -1, io = null, endIo = null, endScroll = null, searchIdx = null, part = 0;
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  function isDone(i) { return state.lessons.indexOf(i) > -1; }
-  function pct() { return Math.round(state.lessons.length / N * 100); }
+  function pathMeta() { return PATHS[state.role] || null; }
+  function pathIds() { var meta = pathMeta(); return meta ? meta.ids : []; }
+  function onPath(i) { return pathIds().indexOf(i) > -1; }
+  function pathComplete() { var ids = pathIds(); return ids.length > 0 && ids.every(isDone); }
+  function lTitle(i) { return L[i].title; }
+  function lessonMins(i) { var l = L[i]; return state.role === 'lead' && l.minsLead ? l.minsLead : l.mins; }
+  function lessonGoals(i) { var l = L[i]; return state.role === 'lead' && l.goalsLead ? l.goalsLead : l.goals; }
+  function roleList(role) {
+    if (!state.byRole) state.byRole = { emp: [], lead: [] };
+    if (!Array.isArray(state.byRole[role])) state.byRole[role] = [];
+    return state.byRole[role];
+  }
+  function isDone(i) {
+    if (state.role !== 'emp' && state.role !== 'lead') return false;
+    return roleList(state.role).indexOf(i) > -1;
+  }
+  function pct() {
+    var ids = pathIds();
+    if (!ids.length) return 0;
+    var done = ids.filter(isDone).length;
+    return Math.round(done / ids.length * 100);
+  }
   function mobile() { return window.matchMedia('(max-width: 1000px)').matches; }
   function pad2(n) { return (n < 10 ? '0' : '') + n; }
 
@@ -21,13 +45,16 @@
     return part >= 25 ? part : 25;
   }
   function drawSidebar() {
-    $('#lessons').innerHTML = L.map(function (l, i) {
+    var ids = pathIds();
+    var list = $('#lessons');
+    list.classList.toggle('is-compact', ids.length > 0 && ids.length < 6);
+    list.innerHTML = ids.length ? ids.map(function (i) {
       var slice = sliceNow(i);
       var st = isDone(i) ? ' is-done' : (slice ? ' is-part' : '');
       var sr = isDone(i) ? ' (completed)' : (slice ? ' (' + slice + '% through)' : '');
       var tickStyle = slice ? ' style="--part:' + slice + '%"' : '';
-      return '<button type="button" class="lesson-link' + st + (i === cur ? ' is-current' : '') + '" data-go="' + i + '"' + (i === cur ? ' aria-current="page"' : '') + '><span class="lines" aria-hidden="true">' + ic('doc-lines') + '</span><span class="lt">' + l.title + '</span><span class="tick" aria-hidden="true"' + tickStyle + '>' + (isDone(i) ? ic('check') : '') + '</span><span class="sr">' + sr + '</span></button>';
-    }).join('');
+      return '<button type="button" class="lesson-link' + st + (i === cur ? ' is-current' : '') + '" data-go="' + i + '"' + (i === cur ? ' aria-current="page"' : '') + '><span class="lines" aria-hidden="true">' + ic('doc-lines') + '</span><span class="lt">' + lTitle(i) + '</span><span class="tick" aria-hidden="true"' + tickStyle + '>' + (isDone(i) ? ic('check') : '') + '</span><span class="sr">' + sr + '</span></button>';
+    }).join('') : '<p class="side-empty">Choose a path on the introduction page.</p>';
     $('#plabel').textContent = pct() + '% COMPLETE';
     $('#pbar').style.width = pct() + '%';
     applySearch();
@@ -35,7 +62,7 @@
   function buildSearchIdx() {
     if (searchIdx) return;
     searchIdx = L.map(function (l) {
-      var doc = new DOMParser().parseFromString('<body>' + l.html() + '</body>', 'text/html');
+      var doc = new DOMParser().parseFromString('<body>' + l.html('emp') + l.html('lead') + '</body>', 'text/html');
       return (l.title + ' ' + doc.body.textContent).toLowerCase();
     });
   }
@@ -43,7 +70,10 @@
     var q = $('#search').value.trim().toLowerCase();
     if (q) buildSearchIdx();
     $('#lessons').classList.toggle('is-filtering', !!q);
-    $$('.lesson-link').forEach(function (b, i) { b.style.display = !q || searchIdx[i].indexOf(q) > -1 ? '' : 'none'; });
+    $$('.lesson-link').forEach(function (b) {
+      var i = +b.dataset.go;
+      b.style.display = !q || (searchIdx[i] && searchIdx[i].indexOf(q) > -1) ? '' : 'none';
+    });
   }
   function scrollSlice() {
     var doc = document.documentElement;
@@ -77,12 +107,18 @@
   }
 
   /* ------------------------------------------------------------ persistence */
-  function save() { state.location = Math.max(0, cur); window.SCORM.writeState(state, N); }
+  function save() {
+    if (cur >= 0) state.location = cur;
+    window.SCORM.writeState(state, pathIds());
+  }
   function markDone(i) {
+    if (state.role !== 'emp' && state.role !== 'lead') return;
     if (isDone(i)) return;
-    state.lessons.push(i);
+    roleList(state.role).push(i);
     save(); drawSidebar();
-    toast(state.lessons.length >= N ? 'Course complete. Well done!' : 'Lesson ' + (i + 1) + ' complete');
+    var ids = pathIds();
+    var pos = ids.indexOf(i) + 1;
+    toast(pathComplete() ? 'Course complete. Well done!' : 'Lesson ' + pos + ' complete');
   }
   var toastT;
   function toast(msg) {
@@ -93,42 +129,122 @@
   }
 
   /* ------------------------------------------------------------ views */
+  function pathDone(role) {
+    var ids = PATHS[role].ids;
+    var list = roleList(role);
+    return ids.length > 0 && ids.every(function (n) { return list.indexOf(n) > -1; });
+  }
+  function pathNote(meta) {
+    if (!meta) return '';
+    return '<div class="note"><p class="note-h">' + meta.label + ' path</p><p class="dur">' + meta.time + '. ' + meta.done + '</p><ol class="path-list">' + meta.ids.map(function (i) { return '<li>' + lTitle(i) + '</li>'; }).join('') + '</ol></div>';
+  }
+  function pathCard(role, icon, title, blurb) {
+    var done = pathDone(role);
+    return '<button type="button" class="path-card' + (done ? ' is-complete' : '') + '" data-role="' + role + '" aria-pressed="' + (state.role === role ? 'true' : 'false') + '">' +
+      '<span class="path-ico" aria-hidden="true">' + ic(icon) + '</span><span class="path-copy"><b>' + title + '</b><small>' + blurb + '</small></span>' +
+      (done ? '<span class="path-done">' + ic('check') + 'Completed</span>' : '') + '</button>';
+  }
   function coverHTML() {
-    var complete = state.lessons.length >= N;
-    var resume = !complete && (state.lessons.length > 0 || state.location > 0);
-    var label = complete ? 'Restart course' : (resume ? 'Resume course' : 'Start course');
+    var meta = pathMeta();
+    var complete = pathComplete();
+    var started = meta && meta.ids.some(isDone);
+    var label = complete ? 'Restart course' : (started ? 'Resume course' : 'Start course');
     return '<section class="cover2"><header class="c-hero"><img src="assets/cover-photo.jpg" alt=""><h1>Time Tracking Compliance for<br>US Non-Exempt Employees<br>and Leaders</h1><svg class="c-wave" viewBox="0 0 1024 92" preserveAspectRatio="none" aria-hidden="true"><path fill="#f4f7fb" d="M0 31C90 58 170 78 248 76C400 72 560 46 760 28C900 16 970 12 1024 10V92H0Z"/></svg></header>' +
       '<div class="c-copy"><p class="wel">Welcome to US time tracking training!</p>' +
       '<p class="gap">This training is designed to increase awareness and understanding of time tracking responsibilities for US non-exempt employees and their leaders. The course addresses the critical business need to ensure accurate timecard submissions and approvals to comply with legal requirements under the Fair Labor Standards Act (FLSA) and Cisco&rsquo;s policies.</p>' +
       '<p>Employee learners will gain knowledge about their non-exempt status and learn how to correctly submit and modify timecards in the Workday system. Leadership learners will understand their role in reviewing, validating, and approving timecards.</p>' +
       '<p>By completing this course, employees and leaders will be equipped to perform their respective time tracking duties accurately and timely, supporting Cisco&rsquo;s commitment to legal compliance, operational efficiency, and employee well-being.</p>' +
-      '<div class="note"><p class="note-h">Course Completion Guidance:</p><ul>' +
-      '<li><strong>Non-Exempt Employees:</strong> Employees should complete the core foundational sections and are not expected to undertake the People Leader lesson.</li>' +
-      '<li><strong>People Leaders:</strong> Leaders are expected to complete the entire training, including both the employee lessons and the dedicated people leader lesson. Completing the full course provides leaders with a complete understanding of the responsibilities expected of their team members, while preparing them to manage approvals and delegations effectively.</li>' +
-      '</ul></div>' +
-      '<p class="dur">Module Duration: Approximately 30 minutes.</p>' +
-      '<button type="button" class="c-start" data-act="start">' + label + '</button></div></section>';
+      '<p class="dur">Choose your path</p>' +
+      '<div class="path-row" role="group" aria-label="Choose your path">' +
+      pathCard('emp', 'user', 'Employee', 'Track and submit your own time') +
+      pathCard('lead', 'users', 'People Leader', 'Review and approve your team&rsquo;s time') + '</div>' +
+      '<div id="path-detail">' + pathNote(meta) + '</div>' +
+      '<button type="button" class="c-start" id="path-start" data-act="start"' + (meta ? '' : ' disabled') + '>' + label + '</button></div></section>';
+  }
+  function paintPathChoice() {
+    var meta = pathMeta();
+    var complete = pathComplete();
+    var started = meta && meta.ids.some(isDone);
+    var label = complete ? 'Restart course' : (started ? 'Resume course' : 'Start course');
+    $$('.path-card').forEach(function (btn) {
+      btn.setAttribute('aria-pressed', btn.getAttribute('data-role') === state.role ? 'true' : 'false');
+    });
+    var slot = $('#path-detail');
+    if (slot) slot.innerHTML = pathNote(meta);
+    var start = $('#path-start');
+    if (start) {
+      start.textContent = label;
+      start.disabled = !meta;
+    }
+    drawSidebar();
   }
   function heroHTML(i) {
     var l = L[i];
-    return '<header class="lhero"><img class="bg" src="assets/' + l.hero + '" alt=""><div class="ghost" aria-hidden="true">' + pad2(i + 1) + '</div><div class="lhero-in">' +
-      '<span class="kicker">' + ic('layers') + ' Lesson ' + (i + 1) + ' of ' + N + '</span><h1>' + l.title + '</h1><div class="meta"><span class="pill">' + ic('clock') + ' ' + l.mins + ' min</span>' +
-      l.roles.map(function (r) { return r === 'lead' ? '<span class="pill lead">' + ic('users') + ' People Leaders</span>' : '<span class="pill emp">' + ic('user') + ' Employees</span>'; }).join('') + '</div>' +
-      '<div class="goals-h">By the end of this lesson</div><ul class="goals">' + l.goals.map(function (g) { return '<li>' + ic('check-circle') + '<span>' + g + '</span></li>'; }).join('') + '</ul></div></header>';
+    var ids = pathIds();
+    var n = ids.indexOf(i) + 1;
+    var total = ids.length || N;
+    return '<header class="lhero"><img class="bg" src="assets/' + l.hero + '" alt=""><div class="ghost" aria-hidden="true">' + pad2(n) + '</div><div class="lhero-in">' +
+      '<span class="kicker">' + ic('layers') + ' Lesson ' + n + ' of ' + total + '</span><h1>' + l.title + '</h1><div class="meta"><span class="pill">' + ic('clock') + ' ' + lessonMins(i) + ' min</span></div>' +
+      '<div class="goals-h">By the end of this lesson</div><ul class="goals">' + lessonGoals(i).map(function (g) { return '<li>' + ic('check-circle') + '<span>' + g + '</span></li>'; }).join('') + '</ul></div></header>';
   }
   function footHTML(i) {
-    return i < N - 1
-      ? '<button type="button" class="nextbar" data-go="' + (i + 1) + '">' + ic('arrow-down') + '<span>' + (i + 2) + ' of ' + N + ' &mdash; ' + L[i + 1].title + '</span></button>'
-      : '<button type="button" class="nextbar" data-go="-1">' + ic('arrow-up') + '<span>You have reached the end &mdash; back to the course start</span></button>';
+    var ids = pathIds();
+    var pos = ids.indexOf(i);
+    if (pos > -1 && pos < ids.length - 1) {
+      return '<button type="button" class="nextbar" data-go="' + ids[pos + 1] + '">' + ic('arrow-down') + '<span>Next lesson &mdash; ' + lTitle(ids[pos + 1]) + '</span></button>';
+    }
+    var wait = L[i] && L[i].completeOnQuiz && !isDone(i);
+    return '<div class="endbar" id="endbar"' + (wait ? ' hidden' : '') + '>' + ic('check-circle') + '<span>You have reached the end. You can exit the course now.</span></div>';
+  }
+  function stopEndWatch() {
+    if (endIo) { endIo.disconnect(); endIo = null; }
+    if (endScroll) { window.removeEventListener('scroll', endScroll); endScroll = null; }
+  }
+  function endSeen(bar) {
+    var r = bar.getBoundingClientRect();
+    if (r.height < 8) return false;
+    var vis = Math.min(r.bottom, window.innerHeight) - Math.max(r.top, 0);
+    return vis / r.height >= 0.6;
+  }
+  /* The last lesson that is not a quiz completes only after the learner scrolls
+     far enough to see the closing note. Opening the lesson is not enough. */
+  function watchEnd() {
+    stopEndWatch();
+    var bar = $('#endbar');
+    if (!bar || bar.hidden || cur < 0 || isDone(cur) || L[cur].completeOnQuiz) return;
+    var top = bar.getBoundingClientRect().top;
+    if (top < window.innerHeight - 8) bar.style.marginTop = Math.ceil(window.innerHeight - top + 16) + 'px';
+    var startY = window.scrollY;
+    function finish() {
+      if (window.scrollY <= startY + 8) return;
+      if (cur < 0 || isDone(cur) || L[cur].completeOnQuiz) { stopEndWatch(); return; }
+      if (!bar.isConnected || bar.hidden || !endSeen(bar)) return;
+      stopEndWatch();
+      markDone(cur);
+    }
+    endScroll = finish;
+    window.addEventListener('scroll', finish, { passive: true });
+    if ('IntersectionObserver' in window) {
+      endIo = new IntersectionObserver(finish, { threshold: [0.6, 1] });
+      endIo.observe(bar);
+    }
+  }
+  function revealEnd() {
+    var bar = $('#endbar');
+    if (!bar || !bar.hidden) return;
+    bar.hidden = false;
+    bar.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'nearest' });
   }
 
   function show(i, noScroll) {
+    if (i >= 0 && !onPath(i)) i = -1;
     cleanup();
     cur = i;
     part = (i >= 0 && !isDone(i)) ? 25 : 0;
     if (i < 0) { stage.innerHTML = coverHTML(); }
     else {
-      stage.innerHTML = heroHTML(i) + '<div class="lbody">' + L[i].html() + '<div id="end" aria-hidden="true" style="height:1px"></div></div>' + footHTML(i);
+      stage.innerHTML = heroHTML(i) + '<div class="lbody">' + L[i].html(state.role) + '<div id="end" aria-hidden="true" style="height:1px"></div></div>' + footHTML(i);
+      keepWords(stage);
       initWidgets(i);
       observe();
     }
@@ -150,10 +266,13 @@
     $('#shell').classList.toggle('is-cover', i < 0);
     if (mobile()) { $('#side').classList.remove('is-open'); $('#menu').setAttribute('aria-expanded', 'false'); }
     document.title = (i < 0 ? '' : L[i].title + ' | ') + 'Time Tracking Compliance';
+    watchEnd();
   }
   function cleanup() {
     if (io) io.disconnect();
     io = null;
+    stopEndWatch();
+    closeZoom(true);
     $$('video').forEach(function (v) { v.pause(); });
   }
   function observe() {
@@ -174,7 +293,18 @@
     $$('[data-explorer]').forEach(W.explorer);
     $$('[data-quiz]').forEach(function (el) { W.quiz(el, i); });
   }
-  function setIcon(el, name, html) { el.innerHTML = ic(name) + '<span>' + html + '</span>'; }
+  function setIcon(el, name, html) { el.innerHTML = ic(name) + '<span>' + html + '</span>'; keepWords(el); }
+  /* Keep compound words such as "auto-populated" on one line so card text
+     flows across the card instead of splitting at the hyphen. */
+  function keepWords(root) {
+    if (!root) return;
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    var node;
+    while ((node = walker.nextNode())) {
+      if (node.nodeValue.indexOf('-') === -1) continue;
+      node.nodeValue = node.nodeValue.replace(/([A-Za-z0-9])-([A-Za-z0-9])/g, '$1\u2011$2');
+    }
+  }
   function paintRange(r) {
     var min = parseFloat(r.min), max = parseFloat(r.max), v = parseFloat(r.value);
     var pct = (max > min) ? ((v - min) / (max - min)) * 100 : 0;
@@ -263,7 +393,8 @@
           if (v.getAttribute('preload') === 'none') { v.preload = 'metadata'; v.load(); }
         });
       });
-      if (!el.classList.contains('walks')) noteSeen($$('.tab', el), b);
+      if (el.classList.contains('walks')) el.setAttribute('data-tone', b.getAttribute('data-tone') || 'sky');
+      else noteSeen($$('.tab', el), b);
     }
     el.addEventListener('click', function (e) {
       var b = e.target.closest('.tab'); if (!b || !el.contains(b)) return;
@@ -310,6 +441,7 @@
       var h = $$('.pillar h3', el)[k].textContent;
       det.innerHTML = '<h3 style="margin:0 0 8px"></h3><p style="margin:0;max-width:none"></p>';
       $('h3', det).textContent = h; $('p', det).textContent = texts[k];
+      keepWords(det);
     }
     el.addEventListener('click', function (e) { var b = e.target.closest('.pillar'); if (b) pick(+b.dataset.i); });
   };
@@ -322,12 +454,13 @@
       noteSeen(buttons, buttons[k]);
       det.innerHTML = '<h3 style="margin:0 0 8px"></h3><p style="margin:0;max-width:none"></p>';
       $('h3', det).textContent = items[k].t; $('p', det).innerHTML = items[k].h;
+      keepWords(det);
     }
     el.addEventListener('click', function (e) { var b = e.target.closest('.pipe button'); if (b) pick(+b.dataset.i); });
   };
 
   W.explorer = function (el) {
-    var days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], evs = window.EVENTS, box = $('[data-days]', el), det = $('[data-ev-detail]', el);
+    var days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], evs = el.getAttribute('data-events') === 'lead' ? window.EVENTS_LEAD : window.EVENTS, box = $('[data-days]', el), det = $('[data-ev-detail]', el);
     box.innerHTML = days.map(function (d, k) {
       var mine = evs.map(function (e, n) { return e.day === k ? '<button type="button" class="ev-btn ' + e.who + '" data-e="' + n + '" aria-pressed="false">' + e.label + '</button>' : ''; }).join('');
       return '<div class="dcol' + (mine ? '' : ' dim') + '"><span class="dn">' + d + '</span>' + mine + '</div>';
@@ -343,6 +476,7 @@
       var e = evs[n], tag = e.who === 'lead' ? 'Leader' : e.who === 'warn' ? 'Caution' : 'Employee';
       det.innerHTML = '<span class="role-tag ' + (e.who === 'lead' ? 'lead' : e.who === 'warn' ? 'warn' : 'emp') + '">' + tag + '</span><b></b><span></span>';
       $('b', det).textContent = e.when; det.lastChild.textContent = e.h;
+      keepWords(det);
     }
     box.addEventListener('click', function (ev) { var b = ev.target.closest('.ev-btn'); if (b) pick(+b.dataset.e); });
     det.innerHTML = '<span style="opacity:.8">Click a moment in the week above.</span>';
@@ -373,10 +507,11 @@
       b1.className = meals >= 1 ? 'on warn' : 'off'; $('[data-rv]', b1).textContent = meals >= 1 ? '30 min' : 'Not yet';
       b2.className = meals >= 2 ? 'on warn' : 'off'; $('[data-rv]', b2).textContent = meals >= 2 ? '30 min' : 'Not yet';
       var msg;
+      var lead = state.role === 'lead';
       if (h < 4) msg = 'Under 4 hours: no required break has been earned yet.';
-      else if (h < 5) msg = 'You have worked a full 4-hour block, so a 10-minute paid rest break is due. A meal break starts at 5 hours.';
-      else if (h <= 10) msg = 'Past 5 hours: a 30-minute unpaid meal break, with you completely relieved of duty. Rest breaks (10 min, paid) are due in every 4-hour block and are not entered on your timecard.';
-      else msg = 'Past 10 hours: a second 30-minute meal break is also due. If any break is involuntarily missed, report it (rest: form to your leader; meal: record the hours worked on your timecard).';
+      else if (h < 5) msg = lead ? 'A full 4-hour block means a 10-minute paid rest break is due. A meal break starts at 5 hours.' : 'You have worked a full 4-hour block, so a 10-minute paid rest break is due. A meal break starts at 5 hours.';
+      else if (h <= 10) msg = lead ? 'Past 5 hours: a 30-minute unpaid meal break, and the employee must be completely relieved of duty. Rest breaks (10 min, paid) are due in every 4-hour block and are not entered on the timecard.' : 'Past 5 hours: a 30-minute unpaid meal break, with you completely relieved of duty. Rest breaks (10 min, paid) are due in every 4-hour block and are not entered on your timecard.';
+      else msg = lead ? 'Past 10 hours: a second 30-minute meal break is also due. If a break is involuntarily missed, the employee reports it (rest: the form to you; meal: consecutive hours on the timecard).' : 'Past 10 hours: a second 30-minute meal break is also due. If any break is involuntarily missed, report it (rest: form to your leader; meal: record the hours worked on your timecard).';
       setIcon(ver, 'info', msg);
     }
     r.addEventListener('input', draw); draw();
@@ -399,7 +534,13 @@
       var e2 = rd('eq'); e2.className = 'on good'; $('[data-rv]', e2).textContent = f(eq) + ' of pay';
       var kind = h <= 8 ? 'good' : (dt > 0 ? 'bad' : 'warn');
       ver.className = 'verdict ' + kind;
-      setIcon(ver, kind === 'good' ? 'check-circle' : 'alert', h <= 8 ? 'All of these hours are at your regular rate. Remember: any overtime needs your manager’s approval first, and every hour must still be recorded.' : (dt > 0 ? 'Hours beyond 12 in a day are paid at double time. Overtime must have been pre-approved, and every hour recorded in Workday.' : 'Hours beyond 8 in a day are paid at 1.5 times your regular rate. Get your manager’s pre-approval before you start, and record every hour in Workday.'));
+      var lead = state.role === 'lead';
+      var msg = h <= 8
+        ? (lead ? 'All of these hours are at the regular rate. Overtime still needs your approval before an employee starts, and every hour must be recorded.' : 'All of these hours are at your regular rate. Remember: any overtime needs your manager’s approval first, and every hour must still be recorded.')
+        : (dt > 0
+          ? (lead ? 'Hours beyond 12 in a day are paid at double time. You approve overtime before it starts, and every hour is recorded in Workday.' : 'Hours beyond 12 in a day are paid at double time. Overtime must have been pre-approved, and every hour recorded in Workday.')
+          : (lead ? 'Hours beyond 8 in a day are paid at 1.5 times the regular rate. Approve overtime before the employee starts, and make sure every hour is recorded in Workday.' : 'Hours beyond 8 in a day are paid at 1.5 times your regular rate. Get your manager’s pre-approval before you start, and record every hour in Workday.'));
+      setIcon(ver, kind === 'good' ? 'check-circle' : 'alert', msg);
     }
     r.addEventListener('input', draw); draw();
   };
@@ -460,6 +601,7 @@
         if (s.dead.indexOf(k) > -1) { b.disabled = true; b.classList.add('wrong'); b.setAttribute('aria-label', 'Ruled out: ' + o.t); }
         box.appendChild(b);
       });
+      keepWords(el);
       var check = $('[data-check]', el), fb = $('[data-fb]', el), locked = false;
       box.addEventListener('click', function (e) {
         var b = e.target.closest('.opt'); if (!b || b.disabled || locked) return;
@@ -474,6 +616,7 @@
         s.tries++; var o = opts[chosen], b = $('.opt[data-k="' + chosen + '"]', box);
         fb.innerHTML = '<div class="fb ' + (o.ok ? 'good' : 'bad') + '">' + ic(o.ok ? 'check-circle' : 'x-circle') + '<div><b>' + (o.ok ? 'Correct' : 'Not quite') + '</b><p></p></div></div>';
         $('p', fb).textContent = o.why;
+        keepWords(fb);
         b.classList.remove('sel');
         if (o.ok) {
           s.ok = true; locked = true; b.classList.add('right'); $$('.opt', box).forEach(function (x) { x.disabled = true; });
@@ -493,22 +636,81 @@
       el.innerHTML = '<div class="score"><div class="ring" style="--p:' + p + '"><div><b>' + first + '/' + total + '</b><small>first try</small></div></div><h3></h3><p></p><div class="q-review">' +
         src.map(function (q, k) { var s = st[k]; return '<div>' + ic(s.tries === 1 ? 'check-circle' : 'repeat', s.tries === 1 ? 'ok' : 'rt') + '<span></span></div>'; }).join('') + '</div><div class="q-ctl" style="justify-content:center"><button type="button" class="btn ghost on-dark" data-again>' + ic('repeat') + ' Try again</button></div></div>';
       $('h3', el).textContent = head; $('.score p', el).textContent = line;
+      keepWords(el);
       $$('.q-review div', el).forEach(function (d, k) { var q = src[k]; d.lastChild.textContent = (q.title || q.q) + (st[k].tries === 1 ? ' · first try' : ' · needed ' + st[k].tries + ' tries'); });
       $('[data-again]', el).addEventListener('click', start);
-      if (L[lessonIdx].completeOnQuiz) markDone(lessonIdx);
+      if (L[lessonIdx].completeOnQuiz) { markDone(lessonIdx); revealEnd(); }
     }
     start();
   };
 
+  /* ------------------------------------------------------------ full-size screenshots */
+  var zoomReturn = null;
+  function openZoom(btn) {
+    var box = $('#lightbox'), img = $('#lightbox-img');
+    if (!box || !img) return;
+    var src = btn.getAttribute('data-full');
+    var title = btn.getAttribute('data-full-title') || '';
+    if (!src) return;
+    img.src = src;
+    img.alt = title;
+    $('#lightbox-cap').textContent = title;
+    zoomReturn = btn;
+    box.hidden = false;
+    document.body.classList.add('lightbox-open');
+    if ($('#shell')) $('#shell').inert = true;
+    $$('video').forEach(function (v) { v.pause(); });
+    $('.lightbox-x', box).focus();
+  }
+  function closeZoom(silent) {
+    var box = $('#lightbox');
+    if (!box || box.hidden) return;
+    box.hidden = true;
+    $('#lightbox-img').removeAttribute('src');
+    $('#lightbox-img').alt = '';
+    $('#lightbox-cap').textContent = '';
+    document.body.classList.remove('lightbox-open');
+    if ($('#shell')) $('#shell').inert = false;
+    if (!silent && zoomReturn && zoomReturn.isConnected) zoomReturn.focus();
+    zoomReturn = null;
+  }
+
   /* ------------------------------------------------------------ global events */
   document.addEventListener('click', function (e) {
+    if (e.target.closest('[data-zoom-close]')) { closeZoom(); return; }
+    var zoomBtn = e.target.closest('[data-full]');
+    if (zoomBtn) { openZoom(zoomBtn); return; }
     var g = e.target.closest('[data-go]');
     if (g) {
       if (g.classList.contains('nextbar') && cur >= 0 && !L[cur].completeOnQuiz) markDone(cur);
       show(+g.dataset.go);
       return;
     }
-    if (e.target.closest('[data-act="start"]')) { show(Math.min(N - 1, Math.max(0, state.lessons.length >= N ? 0 : (state.location || 0)))); return; }
+    var roleBtn = e.target.closest('[data-role]');
+    if (roleBtn) {
+      var nextRole = roleBtn.getAttribute('data-role');
+      if (nextRole === 'emp' || nextRole === 'lead') {
+        state.role = nextRole;
+        save();
+        if (cur < 0 && $('#path-detail')) paintPathChoice();
+        else show(-1);
+      }
+      return;
+    }
+    if (e.target.closest('[data-act="start"]')) {
+      var ids = pathIds();
+      if (!ids.length) return;
+      if (pathComplete()) {
+        state.byRole[state.role] = roleList(state.role).filter(function (n) { return ids.indexOf(n) === -1; });
+        save();
+        show(ids[0]);
+        return;
+      }
+      var dest = ids[0];
+      for (var k = 0; k < ids.length; k++) { if (!isDone(ids[k])) { dest = ids[k]; break; } }
+      show(dest);
+      return;
+    }
     var an = e.target.closest('a[href^="#l"]');
     if (an) { e.preventDefault(); var t = document.getElementById(an.getAttribute('href').slice(1)); if (t) t.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' }); }
   });
@@ -530,6 +732,9 @@
     var maxList = list.scrollHeight - list.clientHeight;
     if (maxPage > 0 && maxList > 0) list.scrollTop = (window.scrollY / maxPage) * maxList;
   }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeZoom();
+  });
   window.addEventListener('scroll', function () { syncNav(); paintPart(); }, { passive: true });
   window.addEventListener('resize', paintPart);
   window.addEventListener('hashchange', function () {

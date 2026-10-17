@@ -1,8 +1,8 @@
 /* SCORM 2004 3rd Edition runtime.
-   Completion is 80 percent of lessons. Status is completed / incomplete.
+   Completion is every lesson on the learner's chosen path. Status is completed / incomplete.
    Success (passed / failed) is left unknown so the LMS can report Complete/Incomplete. */
 (function () {
-  var COMPLETION_PERCENT = 80;
+  var COMPLETION_PERCENT = 100;
   var started = Date.now();
 
   function findAPI(win) {
@@ -106,14 +106,43 @@
     commit();
   }
 
+  function lessonIds(list) {
+    var out = [];
+    if (!Array.isArray(list)) return out;
+    list.forEach(function (n) {
+      if (typeof n === "number" && n >= 0 && n % 1 === 0 && out.indexOf(n) === -1) out.push(n);
+    });
+    return out;
+  }
+
   function readState() {
-    var state = { lessons: [], location: 0 };
+    var state = { byRole: { emp: [], lead: [] }, location: 0, role: "" };
     var raw = get("cmi.suspend_data");
     if (raw && raw.charAt(0) === "{") {
       try {
         var parsed = JSON.parse(raw);
-        if (parsed && Array.isArray(parsed.lessons)) state.lessons = parsed.lessons;
+        if (parsed && parsed.byRole && typeof parsed.byRole === "object") {
+          state.byRole.emp = lessonIds(parsed.byRole.emp);
+          state.byRole.lead = lessonIds(parsed.byRole.lead);
+        } else if (parsed && Array.isArray(parsed.lessons)) {
+          /* Older saves kept one lesson list for both paths. A list that
+             includes the leader-only lesson belongs to the leader path. */
+          var lessons = lessonIds(parsed.lessons);
+          var empOnly = [1, 2, 3, 5, 6, 9];
+          var leadOnly = [7];
+          var shared = [0, 4, 8];
+          var hasEmp = lessons.some(function (n) { return empOnly.indexOf(n) > -1; });
+          var hasLead = lessons.some(function (n) { return leadOnly.indexOf(n) > -1; });
+          var legacyRole = parsed.role === "emp" || parsed.role === "lead" ? parsed.role : "";
+          if (hasLead && !hasEmp) state.byRole.lead = lessons;
+          else if (hasEmp && !hasLead) state.byRole.emp = lessons;
+          else if (hasEmp && hasLead) {
+            state.byRole.emp = lessons.filter(function (n) { return leadOnly.indexOf(n) === -1 && shared.indexOf(n) === -1; });
+            state.byRole.lead = lessons.filter(function (n) { return empOnly.indexOf(n) === -1 && shared.indexOf(n) === -1; });
+          } else if (legacyRole) state.byRole[legacyRole] = lessons;
+        }
         if (parsed && typeof parsed.location === "number") state.location = parsed.location;
+        if (parsed && (parsed.role === "emp" || parsed.role === "lead")) state.role = parsed.role;
       } catch (err) {
         state.location = 0;
       }
@@ -123,17 +152,26 @@
     return state;
   }
 
-  function writeState(state, lessonCount) {
-    var unique = [];
-    state.lessons.forEach(function (n) {
-      if (unique.indexOf(n) === -1) unique.push(n);
-    });
-    state.lessons = unique;
-    var payload = JSON.stringify({ lessons: unique, location: state.location });
+  function writeState(state, pathIds) {
+    var byRole = {
+      emp: lessonIds(state.byRole && state.byRole.emp),
+      lead: lessonIds(state.byRole && state.byRole.lead)
+    };
+    state.byRole = byRole;
+    var ids = Array.isArray(pathIds) ? pathIds : [];
+    var role = state.role === "emp" || state.role === "lead" ? state.role : "";
+    var current = role ? byRole[role] : [];
+    var payload = JSON.stringify({ byRole: byRole, location: state.location, role: role });
     if (payload.length > 4000) {
-      payload = JSON.stringify({ lessons: unique.slice(-20), location: state.location });
+      payload = JSON.stringify({
+        byRole: { emp: byRole.emp.slice(-12), lead: byRole.lead.slice(-12) },
+        location: state.location,
+        role: role
+      });
     }
-    var percent = lessonCount ? Math.round((unique.length / lessonCount) * 100) : 0;
+    var doneOnPath = 0;
+    ids.forEach(function (n) { if (current.indexOf(n) > -1) doneOnPath += 1; });
+    var percent = ids.length ? Math.round((doneOnPath / ids.length) * 100) : 0;
     var measure = scaled(percent);
     set("cmi.suspend_data", payload);
     set("cmi.location", String(state.location));
@@ -145,10 +183,7 @@
     set("cmi.success_status", "unknown");
     set("cmi.exit", "suspend");
     set("cmi.session_time", sessionTime());
-    var current = get("cmi.completion_status");
-    if (current !== "completed") {
-      set("cmi.completion_status", percent >= COMPLETION_PERCENT ? "completed" : "incomplete");
-    }
+    set("cmi.completion_status", ids.length && doneOnPath >= ids.length ? "completed" : "incomplete");
     commit();
     return get("cmi.completion_status");
   }

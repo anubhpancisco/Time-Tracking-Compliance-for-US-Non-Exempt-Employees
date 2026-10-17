@@ -20,7 +20,8 @@
     if (!v) return '';
     var chapters = (v.chapters || []).map(function (c) { return '<button type="button" class="chap" data-seek="' + c.start + '">' + c.label + '</button>'; }).join('');
     var tr = (v.transcript || []).map(function (t) { return '<p>' + t + '</p>'; }).join('');
-    return '<div class="band rv"><div class="vid-title">' + ic('play') + ' ' + title + '<span class="hint">Press play. Turn on captions from the player controls if you want them.</span></div><div class="vid" data-video="' + id + '"><video controls preload="metadata" playsinline poster="media/' + id + '-poster.jpg"><source src="media/' + id + '.mp4" type="video/mp4"><track kind="captions" srclang="en" label="English" src="media/' + id + '.vtt"></video>' +
+    var rev = (id === 'lead-rates' || id === 'lead-playbook') ? '?v=5' : '';
+    return '<div class="band rv"><div class="vid-title">' + ic('play') + ' ' + title + '<span class="hint">Press play. Turn on captions from the player controls if you want them.</span></div><div class="vid" data-video="' + id + '"><video controls preload="metadata" playsinline poster="media/' + id + '-poster.jpg' + rev + '"><source src="media/' + id + '.mp4' + rev + '" type="video/mp4"><track kind="captions" srclang="en" label="English" src="media/' + id + '.vtt' + rev + '"></video>' +
       '<div class="bar"><span class="lbl">Click to jump to</span>' + chapters + '</div></div>' +
       '<details class="transcript"><summary>' + ic('file') + '<span><b>Video Transcript</b></span></summary><div class="tr-body">' + tr + '</div></details></div>';
   }
@@ -28,21 +29,35 @@
   function walk(file, title) {
     return '<div class="band rv"><div class="vid-title">' + ic('play') + ' ' + esc(title) + '<span class="hint">Workday walkthrough</span></div><div class="vid" data-video="' + file + '"><video controls preload="metadata" playsinline aria-label="' + esc(title) + '"><source src="media/' + file + '" type="video/mp4"></video></div></div>';
   }
-  /* Two or more walkthroughs share one player. The tab label is the video name. */
+  /* Two or more walkthroughs share one player. "Video 01: …" becomes a numbered card plus the question. */
   function walks(id, items) {
+    var tones = ['sky', 'green', 'orange'];
     var tabsHtml = items.map(function (t, i) {
       var on = i === 0;
-      return '<button type="button" class="tab" role="tab" id="' + id + '-tab-' + i + '" data-t="' + i + '" aria-selected="' + on + '" aria-controls="' + id + '-panel-' + i + '" tabindex="' + (on ? '0' : '-1') + '"><span class="dot" aria-hidden="true"></span><span class="tab-name">' + esc(t.title) + '</span><span class="watched">Viewed</span></button>';
+      var m = /^Video\s+(\d+)\s*:\s*(.+)$/.exec(t.title);
+      var num = m ? m[1] : ((i < 9 ? '0' : '') + (i + 1));
+      var name = m ? m[2] : t.title;
+      var tone = tones[i] || 'sky';
+      return '<button type="button" class="tab tone-' + tone + '" role="tab" id="' + id + '-tab-' + i + '" data-t="' + i + '" data-tone="' + tone + '" aria-selected="' + on + '" aria-controls="' + id + '-panel-' + i + '" tabindex="' + (on ? '0' : '-1') + '"><span class="walk-num" aria-hidden="true">' + esc(num) + '</span><span class="tab-name">' + esc(name) + '</span><span class="watched">Viewed</span></button>';
     }).join('');
     var panels = items.map(function (t, i) {
       var on = i === 0;
       return '<div class="tabpanel" role="tabpanel" id="' + id + '-panel-' + i + '" data-p="' + i + '" aria-labelledby="' + id + '-tab-' + i + '"' + (on ? '' : ' hidden') + '>' +
         '<div class="vid" data-video="' + t.file + '"><video controls ' + (on ? 'preload="metadata"' : 'preload="none"') + ' playsinline aria-label="' + esc(t.title) + '"><source src="media/' + t.file + '" type="video/mp4"></video></div></div>';
     }).join('');
-    return '<div class="band walks rv" data-tabs="' + id + '">' + how('pointer', 'Click', 'a tab to choose a walkthrough.') +
-      '<div class="tablist" role="tablist" aria-label="Workday walkthroughs">' + tabsHtml + '</div>' + panels + '</div>';
+    return '<div class="band walks rv" data-tabs="' + id + '" data-tone="sky">' + how('pointer', 'Click', 'the tabs to view both Workday walkthrough videos.') +
+      '<div class="tablist" role="tablist" aria-label="Workday walkthroughs">' + tabsHtml + '</div><div class="walk-stage">' + panels + '</div></div>';
   }
-  function frame(file, title) { return '<figure class="frame rv" style="margin-left:0;margin-right:0"><div class="chrome"><i></i><i></i><i></i><span>' + title + '</span></div><img src="' + enc(file) + '" alt="' + title + '" loading="lazy"></figure>'; }
+  function frame(file, title, zoom) {
+    var src = enc(file);
+    var safe = esc(title);
+    var img = '<img src="' + src + '" alt="' + (zoom ? '' : safe) + '" loading="lazy">';
+    if (zoom) {
+      img = '<button type="button" class="zoom" data-full="' + src + '" data-full-title="' + safe + '" aria-label="View full size: ' + safe + '">' + img +
+        '<span class="zoom-hint" aria-hidden="true">' + ic('maximize') + '</span></button>';
+    }
+    return '<figure class="frame rv" style="margin-left:0;margin-right:0"><div class="chrome"><i></i><i></i><i></i><span>' + safe + '</span></div>' + img + '</figure>';
+  }
   function tabs(id, items) {
     return how('pointer', 'Click', 'a tab to switch between the alerts.') + '<div class="tabs rv" data-tabs="' + id + '"><div class="tablist" role="tablist">' + items.map(function (t, i) { return '<button type="button" class="tab" role="tab" data-t="' + i + '" aria-selected="' + (i === 0) + '"><span class="dot"></span>' + t.label + '</button>'; }).join('') + '</div>' +
       items.map(function (t, i) { return '<div class="tabpanel" role="tabpanel" data-p="' + i + '"' + (i ? ' hidden' : '') + '>' + t.html + '</div>'; }).join('') + '</div>';
@@ -88,11 +103,13 @@
   window.LESSONS = [
     /* ------------------------------------------------------------------ 1 */
     {
-      title: 'What is time tracking & why do it?', short: 'What & why', mins: 2, roles: ['emp', 'lead'], hero: 'stock-image-3.jpg',
+      title: 'What is time tracking & why do it?', short: 'What & why', mins: 2, minsLead: 3, roles: ['emp', 'lead'], hero: 'stock-image-3.jpg',
       goals: ['Define time tracking in one sentence', 'Know why Cisco requires it'],
-      html: function () {
-        return sec('l1-watch', '', 'Start here', 'Your time. ' + grad('Paid right.'),
-          video('welcome', 'Watch: your time, paid right') +
+      goalsLead: ['Understand your review role and what your team records', 'Know what this 15-minute path covers'],
+      html: function (role) {
+        var lead = role === 'lead';
+        return sec('l1-watch', '', 'Start here', lead ? 'Your review. ' + grad('Their pay.') : 'Your time. ' + grad('Paid right.'),
+          video(lead ? 'lead-welcome' : 'welcome', lead ? 'Watch: your review, their pay' : 'Watch: your time, paid right') +
           '<h3>Go deeper</h3>' + links([[URL_TT, 'How time tracking works', 'Read more about the process'], [URL_CAL, 'US Payroll Calendar', 'Official pay dates and deadlines']]));
       }
     },
@@ -133,50 +150,60 @@
     },
     /* ------------------------------------------------------------------ 5 */
     {
-      title: 'High-level policy overview', short: 'Policy overview', mins: 9, roles: ['emp', 'lead'], hero: 'stock-image-5.jpg',
+      title: 'High-level policy overview', short: 'Policy overview', mins: 9, minsLead: 7, roles: ['emp', 'lead'], hero: 'stock-image-5.jpg',
       goals: ['Edit your timecard and record time off and on-call', 'Know when meal and rest breaks are due', 'Apply the 8-hour, 40-hour and 12-hour pay rules'],
-      html: function () {
+      goalsLead: ['See how employees keep a timecard, including time off and on-call', 'Know the meal and rest breaks your team must take', 'Apply the 8-hour, 40-hour and 12-hour pay rules'],
+      html: function (role) {
+        var lead = role === 'lead';
         return jump([['l5-a', 'Timecard'], ['l5-b', 'Breaks'], ['l5-c', 'Overtime'], ['l5-d', 'On-call'], ['l5-q', 'Quick check']]) +
-          sec('l5-a', 'A', 'Timecard', 'Your timecard, week to week',
-            video('timecard', 'Watch: how your timecard works') +
+          sec('l5-a', 'A', 'Timecard', lead ? 'The employee timecard, week to week' : 'Your timecard, week to week',
+            video(lead ? 'lead-timecard' : 'timecard', lead ? 'Watch: how an employee timecard works' : 'Watch: how your timecard works') +
+            callout('info', 'info', '<p><strong>Time off and hours worked.</strong> If an employee books time off after the timecard was auto-populated, they must delete the conflicting “Hours Worked” entries to prevent overlap and overpayment. Combined daily recorded time cannot exceed the scheduled daily hours. The standard is 8.</p>') +
             walks('l5-card', [
-              { file: 'how-view-timecard.mp4', title: 'How do I view my timecard' },
-              { file: 'how-update-timecard.mp4', title: 'How do I update my timecard' }
+              { file: 'how-view-timecard.mp4', title: lead ? 'Video 01: How does an employee view a timecard?' : 'Video 01: How do I view my timecard?' },
+              { file: 'how-update-timecard.mp4', title: lead ? 'Video 02: How does an employee update a timecard?' : 'Video 02: How do I update my timecard?' }
             ]) +
             links([[URL_KB, 'How to enter time in Workday - US and Canada', 'Step-by-step instructions']])) +
-          sec('l5-b', 'B', 'Meal and rest breaks', 'Breaks are part of the job',
-            video('breaks', 'Watch: breaks that count') +
-            '<p class="after-media">Unpaid meal breaks are determined by the applicable work location state. At this time, 30 minutes or more must be provided once you have worked 5 hours or more, and a second 30-minute meal break is due after more than 10 hours.</p>' +
+          sec('l5-b', 'B', 'Meal and rest breaks', lead ? 'Breaks your team must take' : 'Breaks are part of the job',
+            video(lead ? 'lead-breaks' : 'breaks', lead ? 'Watch: breaks your team must take' : 'Watch: breaks that count') +
+            '<p class="after-media">' + (lead
+              ? 'Unpaid meal breaks are determined by the applicable work location state. At this time, employees must receive 30 minutes or more once they have worked 5 hours or more, and a second 30-minute meal break after more than 10 hours.'
+              : 'Unpaid meal breaks are determined by the applicable work location state. At this time, 30 minutes or more must be provided once you have worked 5 hours or more, and a second 30-minute meal break is due after more than 10 hours.') + '</p>' +
+            callout('info', 'info', '<p>During a meal period the employee must be completely relieved of duty and allowed to leave the premises. Otherwise that time is hours worked. A rest break cannot be skipped, banked, or saved for future use.</p>') +
             tool('coffee', 'Break clock', 'Try it', 'breakclock',
-              how('sliders', 'Slide', 'the handle left or right to change the hours worked in a day.') +
-              '<div class="range-row"><label for="bc-r">Hours worked today</label><input id="bc-r" type="range" min="0" max="12" step="0.5" value="0"><span class="val" data-val>0 h</span></div>' +
+              how('sliders', 'Slide', lead ? 'the handle to see which breaks are due after an employee works that many hours.' : 'the handle left or right to change the hours worked in a day.') +
+              '<div class="range-row"><label for="bc-r">' + (lead ? 'Hours an employee worked today' : 'Hours worked today') + '</label><input id="bc-r" type="range" min="0" max="12" step="0.5" value="0"><span class="val" data-val>0 h</span></div>' +
               '<div class="dbar" data-bar></div><div class="axis" data-axis></div>' +
               '<div class="bar-key"><span><i class="k-work"></i>Working</span><span><i class="k-rest"></i>Rest, paid</span><span><i class="k-meal"></i>Meal, unpaid</span></div>' +
               '<div class="readout"><div data-r="rest"><small>Rest breaks (paid)</small><b data-rv></b></div><div data-r="meal1"><small>Meal break #1 (unpaid)</small><b data-rv></b></div><div data-r="meal2"><small>Meal break #2 (unpaid)</small><b data-rv></b></div></div>' +
               '<div class="verdict good" data-verdict></div>') +
-            callout('info', 'info', '<p><strong>Logging a meal break:</strong> choose “Meal” as the reason when you enter your “Out” time.</p>') +
-            walk('how-missed-meal.mp4', 'How do I report an involuntarily missed meal break') +
-            links([[URL_RESTFORM, 'Notice of Involuntarily Missed Rest Break form', 'Give it to your leader if a rest break was missed']])) +
+            callout('info', 'info', lead
+              ? '<p><strong>Logging a meal break:</strong> the employee chooses “Meal” as the reason when they enter their “Out” time.</p>'
+              : '<p><strong>Logging a meal break:</strong> choose “Meal” as the reason when you enter your “Out” time.</p>') +
+            walk('how-missed-meal.mp4', lead ? 'How does an employee report an involuntarily missed meal break?' : 'How do I report an involuntarily missed meal break?') +
+            links([[URL_RESTFORM, 'Notice of Involuntarily Missed Rest Break form', lead ? 'Employees give this form to you when a rest break was missed' : 'Give it to your leader if a rest break was missed']])) +
           sec('l5-c', 'C', 'Overtime', 'What counts, and what it pays',
-            video('rates', 'Watch: 8, 40 and beyond') +
+            video(lead ? 'lead-rates' : 'rates', lead ? 'Watch: 8, 40, and your approval' : 'Watch: 8, 40 and beyond') +
             tool('dollar', 'Overtime calculator', 'Try it', 'otcalc',
-              how('sliders', 'Slide', 'the handle to change the hours you worked in a single day.') +
-              '<div class="range-row"><label for="ot-r">Hours worked in a day</label><input id="ot-r" type="range" min="0" max="14" step="0.5" value="0"><span class="val" data-val>0 h</span></div>' +
+              how('sliders', 'Slide', lead ? 'the handle to change the hours an employee worked in a single day.' : 'the handle to change the hours you worked in a single day.') +
+              '<div class="range-row"><label for="ot-r">' + (lead ? 'Hours an employee worked in a day' : 'Hours worked in a day') + '</label><input id="ot-r" type="range" min="0" max="14" step="0.5" value="0"><span class="val" data-val>0 h</span></div>' +
               '<div class="dbar" data-bar></div><div class="axis" data-axis></div>' +
               '<div class="bar-key"><span><i class="k-work"></i>Regular, 1&times;</span><span><i class="k-ot"></i>Overtime, 1.5&times;</span><span><i class="k-dt"></i>Double time, 2&times;</span></div>' +
               '<div class="readout"><div data-r="reg"><small>Regular · 1×</small><b data-rv></b></div><div data-r="ot"><small>Overtime · 1.5×</small><b data-rv></b></div><div data-r="dt"><small>Double time · 2×</small><b data-rv></b></div><div data-r="eq"><small>Paid like</small><b data-rv></b></div></div>' +
               '<div class="verdict good" data-verdict></div>') +
-            callout('warn', 'alert', '<p><strong>No time to ask first?</strong> If unusual or unforeseen circumstances stop you getting pre-approval, report the overtime in Workday immediately and email your leader as soon as possible. Unexpected overtime is a prompt to talk it through with your leader.</p>') +
-            walk('how-record-overtime.mp4', 'How do I record overtime') +
+            callout('warn', 'alert', lead
+              ? '<p><strong>No time to ask first?</strong> If unusual or unforeseen circumstances stop an employee getting your approval, they report the overtime in Workday immediately and email you as soon as possible.</p>'
+              : '<p><strong>No time to ask first?</strong> If unusual or unforeseen circumstances stop you getting pre-approval, report the overtime in Workday immediately and email your leader as soon as possible. Unexpected overtime is a prompt to talk it through with your leader.</p>') +
+            walk('how-record-overtime.mp4', lead ? 'How does an employee record overtime?' : 'How do I record overtime?') +
             links([[URL_POL, 'Time Tracking Policy for US Non-Exempt Employees', 'Additional overtime scenarios'], [URL_HOL, 'Cisco-observed US holidays', 'Hours worked on these days are overtime']])) +
-          sec('l5-d', 'D', 'On-call', 'On-call, recorded in Workday',
+          sec('l5-d', 'D', 'On-call', lead ? 'On-call your team records' : 'On-call, recorded in Workday',
             walks('l5-oncall', [
-              { file: 'how-oncall-eligible.mp4', title: 'How do I identify if I am on-call eligible' },
-              { file: 'how-record-oncall.mp4', title: 'How do I record on-call' }
+              { file: 'how-oncall-eligible.mp4', title: lead ? 'Video 01: How does an employee identify if they are on-call eligible?' : 'Video 01: How do I identify if I am on-call eligible?' },
+              { file: 'how-record-oncall.mp4', title: lead ? 'Video 02: How does an employee record on-call?' : 'Video 02: How do I record on-call?' }
             ]) +
-            links([[URL_GSP, 'Cisco’s Global Supplemental Pay', 'Policy and country-specific addendum'], [URL_ONCALL, 'How to enter on-call and standby time in Workday – Global', 'Step-by-step guide']])) +
+            links([[URL_GSP, 'Cisco’s Global Supplemental Pay', 'Policy and country-specific addendum'], [URL_ONCALL, 'How to enter on-call and standby time in Workday – Global', lead ? 'Manager section: eligibility, plus how employees record on-call' : 'Step-by-step guide']])) +
           sec('l5-q', 'E', 'Quick check', 'Check what you have learned',
-            quiz('l5', 'Policy check'));
+            quiz(lead ? 'l5lead' : 'l5', 'Policy check'));
       }
     },
     /* ------------------------------------------------------------------ 6 */
@@ -195,11 +222,11 @@
           sec('l6-b', 'B', 'Timecard statuses', 'Three stages, every time',
             how('pointer', 'Click', 'each stage to see what it means.') +
             '<div class="rv" data-pipe><div class="pipe" role="tablist"><button type="button" role="tab" data-i="0" aria-selected="false"><small>Stage 1</small>Not submitted</button><button type="button" role="tab" data-i="1" aria-selected="false"><small>Stage 2</small>Submitted</button><button type="button" role="tab" data-i="2" aria-selected="false"><small>Stage 3</small>Approved</button></div><div class="pipe-detail" data-pipe-detail aria-live="polite"></div></div>' +
-            walk('how-timecard-status.mp4', 'How do I know the status of my timecard')) +
+            walk('how-timecard-status.mp4', 'How do I know the status of my timecard?')) +
           sec('l6-c', 'C', 'Deadlines', 'The week before payday',
             video('payroll', 'Watch: one payroll week') +
-            '<div class="band rv"><div class="explorer" data-explorer><h3>Explore the week</h3>' + how('pointer', 'Click', 'any coloured moment in the week to see what happens and who owns it.') + '<div class="days" data-days></div><div class="ev-detail" data-ev-detail aria-live="polite"></div><div class="legend"><span><i class="lg-emp"></i>Employee</span><span><i class="lg-lead"></i>Leader</span><span><i class="lg-caut"></i>Caution</span></div></div></div>' +
-            walk('how-submit-timecard.mp4', 'How do I submit my timecard') +
+            '<div class="band rv"><div class="explorer" data-explorer><h3>Explore the week</h3>' + how('pointer', 'Click', 'any colored moment in the week to see what happens and who owns it.') + '<div class="days" data-days></div><div class="ev-detail" data-ev-detail aria-live="polite"></div><div class="legend"><span><i class="lg-emp"></i>Employee</span><span><i class="lg-lead"></i>Leader</span><span><i class="lg-caut"></i>Caution</span></div></div></div>' +
+            walk('how-submit-timecard.mp4', 'How do I submit my timecard?') +
             links([[URL_CAL, 'US Payroll Calendar', 'Submission, approval and payroll deadlines']]));
       },
       data: {
@@ -213,7 +240,7 @@
     /* ------------------------------------------------------------------ 7 */
     {
       title: 'Preventing errors & oversight: Alerts & notifications', short: 'Alerts & notifications', mins: 4, roles: ['emp'], hero: 'stock-image-3.jpg',
-      goals: ['Recognise the four Workday alerts', 'Fix an over-8-hour day correctly'],
+      goals: ['Recognize the four Workday alerts', 'Fix an over-8-hour day correctly'],
       html: function () {
         return jump([['l7-remind', 'Reminders'], ['l7-overlap', 'Overlap'], ['l7-daily', 'Daily hours'], ['l7-oncall', 'On-call'], ['l7-missing', 'Missing time']]) +
           sec('l7-intro', '', 'Stay ahead of mistakes', 'Alerts are your safety net',
@@ -254,20 +281,30 @@
     },
     /* ------------------------------------------------------------------ 8 */
     {
-      title: 'People leaders', short: 'People leaders', mins: 5, roles: ['lead'], hero: 'stock-image-2.jpg',
+      title: 'People Leaders', short: 'People Leaders', mins: 4, roles: ['lead'], hero: 'stock-image-2.jpg',
       goals: ['Own the leader responsibilities', 'Review, approve and delegate in Workday', 'Handle discrepancies through conversation, not Send Back'],
       html: function () {
-        return jump([['l8-watch', 'Watch'], ['l8-do', 'In Workday'], ['l8-game', 'Quick check']]) +
-          sec('l8-watch', '', 'For people leaders', 'Your review keeps pay accurate', video('leader', 'Watch: the leader playbook')) +
-          sec('l8-do', '', 'In Workday', 'Check, delegate, approve',
-            '<h3>Check whether a team member is non-exempt</h3>' + frame('how-to-check-if-your-team-is-non-exempt.png', 'Workday: how to check if your team member is non-exempt') +
-            links([[URL_ONCALL, 'How to enter on-call and standby time in Workday - Global', 'Manager section: check on-call eligibility']]) +
-            '<h3>Assign a delegate</h3>' + frame('manage-delegation-01.png', 'Workday: open My Tasks and Manage Delegations') + frame('manage-delegation-02.png', 'Workday: manage delegations') +
-            links([[URL_DELEGATE, 'How to add delegate in Workday', 'Step-by-step guide']]) +
-            '<h3>Review and approve timecards</h3>' +
+        return jump([['l8-watch', 'Watch'], ['l8-week', 'The week'], ['l8-status', 'Status'], ['l8-delegate', 'Delegate'], ['l8-approve', 'Approve'], ['l8-game', 'Quick check']]) +
+          sec('l8-watch', '', 'For people leaders', 'Your review keeps pay accurate',
+            video('lead-playbook', 'Watch: the leader playbook') +
+            '<div class="stack">' +
+            callout('warn', 'alert', '<p><strong>Friday reminder.</strong> Automated reminders to approve your team’s timecards are sent on Fridays of the week before payday. Review them before automatic processing on Sunday.</p>') +
+            callout('info', 'info', '<p><strong>Overlap alerts.</strong> Workday alerts you when hours worked overlap time off, and when on-call standby overlaps on-call hours worked. Resolve those discrepancies promptly.</p>') +
+            '</div>') +
+          sec('l8-week', '', 'The payroll week', 'What your team does, and what you do',
+            video('lead-payroll', 'Watch: one payroll week') +
+            '<div class="band rv"><div class="explorer" data-explorer data-events="lead"><h3>Explore the week</h3>' + how('pointer', 'Click', 'any colored moment in the week to see what happens and who owns it.') + '<div class="days" data-days></div><div class="ev-detail" data-ev-detail aria-live="polite"></div><div class="legend"><span><i class="lg-emp"></i>Employee</span><span><i class="lg-lead"></i>Leader</span><span><i class="lg-caut"></i>Caution</span></div></div></div>') +
+          sec('l8-status', 'A', 'Check status', 'Is this team member non-exempt?',
+            '<ol class="do-steps"><li><span>1</span><div><b>Search</b><p>Search for the team member in Workday.</p></div></li><li><span>2</span><div><b>Open Position</b><p>Open the team member’s profile and select the <b>Position</b> tab.</p></div></li><li><span>3</span><div><b>Read the status</b><p>Read <b>FLSA Exemption Status</b>.</p></div></li></ol>' +
+            links([[URL_ONCALL, 'How to enter on-call and standby time in Workday - Global', 'Manager section: check on-call eligibility']])) +
+          sec('l8-delegate', 'B', 'Cover your absence', 'Assign a delegate',
+            '<div class="do-shots">' +
+            frame('manage-delegation-01.png', 'Workday: open My Tasks and Manage Delegations', true) + frame('manage-delegation-02.png', 'Workday: manage delegations', true) +
+            '</div>' + links([[URL_DELEGATE, 'How to add delegate in Workday', 'Step-by-step guide']])) +
+          sec('l8-approve', 'C', 'Before the Sunday deadline', 'Review and approve timecards',
             walks('l8-approve', [
-              { file: 'how-approve-timecard.mp4', title: 'How do leaders approve a timecard' },
-              { file: 'how-bulk-approve.mp4', title: 'How do leaders bulk approve time in Workday' }
+              { file: 'how-approve-timecard.mp4', title: 'Video 01: How do leaders approve a timecard?' },
+              { file: 'how-bulk-approve.mp4', title: 'Video 02: How do leaders bulk approve time in Workday?' }
             ]) +
             links([[URL_KB, 'How to enter time in Workday - US and Canada', 'See the Manager content']])) +
           sec('l8-game', '', 'Quick check', 'Check what you have learned',
@@ -278,16 +315,24 @@
     {
       title: 'Resources', short: 'Resources', mins: 1, roles: ['emp', 'lead'], hero: 'stock-image-5.jpg',
       goals: ['Know where to find tools, policies and help'],
-      html: function () {
+      html: function (role) {
+        var lead = role === 'lead';
         return sec('l9-hub', '', 'Resources Hub', 'Official guidance, tools and policy documents',
           '<div class="res-grid"><div class="card rv"><h3><span class="ico good" style="margin:0;width:44px;height:44px;font-size:22px">' + ic('file') + '</span>Job aid</h3>' +
-          links([['assets/US_Timecard_Actions_and_Deadlines_Cheat_sheet.pdf', 'Timecard actions and deadlines', 'Download the one-page cheat sheet for the bi-weekly cycle.', 'US_Timecard_Actions_and_Deadlines_Cheat_sheet.pdf']]) +
-          '</div><div class="card rv"><h3><span class="ico" style="margin:0;width:44px;height:44px;font-size:22px">' + ic('laptop') + '</span>Core Time Tracking Tools</h3>' +
+          '<div class="sheet-wrap"><p>Timecard actions and deadlines for the bi-weekly cycle.</p>' +
+          '<table class="sheet"><thead><tr><th>Task</th><th>When</th><th>Action</th></tr></thead><tbody>' +
+          '<tr><td>Daily timecard review</td><td>Daily</td><td>Check pre-populated time for the day in Workday and update it if needed.</td></tr>' +
+          '<tr><td>Advance time off booking</td><td>In advance</td><td>Submit planned time off in the Absence Calendar to prevent overlaps.</td></tr>' +
+          '<tr><td>Thursday auto-submission</td><td>Thursday 8:00 PM PT</td><td>Automated submission occurs. Avoid a manual submit from 8:00 to 9:00 PM PT.</td></tr>' +
+          '<tr><td>Timecards available</td><td>Thursday 9:00 PM PT</td><td>Timecards with overtime or on-call become available for leader review.</td></tr>' +
+          '<tr><td>Sunday re-submission</td><td>Sunday 2:30 PM PT</td><td>Final deadline for employees to edit Friday or weekend hours.</td></tr>' +
+          '<tr><td>Final leader approval</td><td>Sunday 6:30 PM PT</td><td>Final deadline for leader review and approval before auto-processing.</td></tr>' +
+          '</tbody></table></div><p class="sheet-actions"><a class="btn" href="assets/US_Timecard_Actions_and_Deadlines_Cheat_sheet.pdf" download="US_Timecard_Actions_and_Deadlines_Cheat_sheet.pdf">' + ic('file') + ' Download job aid (PDF)</a></p></div><div class="card rv"><h3><span class="ico" style="margin:0;width:44px;height:44px;font-size:22px">' + ic('laptop') + '</span>Core Time Tracking Tools</h3>' +
           links([[URL_WD, 'Workday', 'The official system of record for all time tracking and payroll.'], [URL_KB, 'How to enter time in Workday - US and Canada', 'Step-by-step instructions for editing, deleting, and adding time blocks.'], [URL_TT, 'Time Tracking Snow portal', 'Guidance page regarding Time Tracking with different resources.']]) +
           '</div><div class="card rv"><h3><span class="ico sky" style="margin:0;width:44px;height:44px;font-size:22px">' + ic('file') + '</span>Policies and Addenda</h3>' +
           links([[URL_POL, 'Time Tracking Policy for US Non-Exempt Employees', 'Comprehensive policy details.'], [URL_GSP, 'Global Supplemental Pay Site', 'Information regarding policy and country-specific addenda.'], [URL_ADD, 'US On-Call Addendum', 'Specific rules for on-call eligibility and reporting.']]) +
           '</div><div class="card rv"><h3><span class="ico warn" style="margin:0;width:44px;height:44px;font-size:22px">' + ic('users') + '</span>Support &amp; Enablement</h3>' +
-          links([[URL_CAL, 'US Payroll Calendar & Deadlines', 'Official payroll cutoff and payment dates.'], [URL_HOL, 'Cisco Observed Holidays & Days for Me - USA, Canada, and LATAM', 'Official list of observed US holidays.'], [URL_RESTFORM, 'Notice of Involuntarily Missed Rest Break Form', 'Use this form to report missed rest breaks to your leader.'], [URL_ONCALL, 'How to enter on-call and standby time in Workday – Global', 'Use this article for more information on how to record on-call hours.'], [URL_HELP, 'People Support (Help Zone)', 'Open a case if you have questions or status change inquiries.']]) +
+          links([[URL_CAL, 'US Payroll Calendar & Deadlines', 'Official payroll cutoff and payment dates.'], [URL_HOL, 'Cisco Observed Holidays & Days for Me - USA, Canada, and LATAM', 'Official list of observed US holidays.'], [URL_RESTFORM, 'Notice of Involuntarily Missed Rest Break Form', lead ? 'Employees use this form to report a missed rest break to you.' : 'Use this form to report missed rest breaks to your leader.'], [URL_ONCALL, 'How to enter on-call and standby time in Workday – Global', lead ? 'Manager section for eligibility, and how employees record on-call hours.' : 'Use this article for more information on how to record on-call hours.'], [URL_DELEGATE, 'How to add delegate in Workday', 'Process for assigning an approval delegate.'], [URL_HELP, 'People Support (Help Zone)', 'Open a case if you have questions or status change inquiries.']]) +
           '</div></div>');
       }
     },
@@ -331,6 +376,20 @@
         O('Only for hours worked on weekends.', 0, 'Overtime is not limited to weekends. It is triggered by hours over 8 a day or 40 a week.'),
         O('Only if your manager approves it 48 hours in advance.', 0, 'Pre-approval is required before you work overtime, but there is no 48-hour rule, and every overtime hour must be recorded either way.')] }
     ],
+    l5lead: [
+      { q: 'When must an employee be given an unpaid meal break?', opts: [
+        O('After 4 hours of work.', 0, 'The meal break requirement starts once an employee has worked 5 hours or more.'),
+        O('After 5 hours of work.', 1, 'Correct. 30 minutes or more, completely relieved of duty. A second one is due after 10 hours.'),
+        O('Only if the employee requests it.', 0, 'It is not optional. The meal break must be provided.')] },
+      { q: 'How does an employee report an involuntarily missed meal break?', opts: [
+        O('By stopping work 30 minutes early.', 0, 'Skipping the meal and stopping early is prohibited.'),
+        O('By sending you the “Notice of Involuntarily Missed Rest Break” form.', 0, 'That form is for missed REST breaks. Missed meal breaks are reported on the timecard.'),
+        O('By entering the hours worked consecutively on the timecard, with no meal-break gap.', 1, 'Correct. Workday then generates the meal break payment on the next paycheck.')] },
+      { q: 'When are an employee’s overtime hours paid at 1.5 times the regular rate?', opts: [
+        O('For hours worked over 8 in a day or 40 in a week.', 1, 'Correct. Overtime also applies on Cisco-observed US holidays, and double time applies over 12 hours in a day. Employees need your approval before they start.'),
+        O('Only for hours worked on weekends.', 0, 'Overtime is not limited to weekends. It is triggered by hours over 8 a day or 40 a week.'),
+        O('Only if you approve it 48 hours in advance.', 0, 'Your approval is required before the employee works overtime, but there is no 48-hour rule, and every overtime hour must be recorded either way.')] }
+    ],
     final: [
       { title: 'The overlapping entry', scn: 'Your timecard was pre-populated with 8 hours of “Hours Worked” for Friday. You decide to take that day off for a personal appointment and record 8 hours of “Time Off”. The system is now showing an alert for an overlapping record.', q: 'What is the correct step to take?', opts: [
         O('Do nothing; the system will eventually sort it out during the payroll process.', 0, 'The system will not resolve it for you. You are responsible for the accuracy of your timecard.'),
@@ -372,5 +431,16 @@
     { day: 4, label: 'Reminder', who: 'lead', when: 'Friday', h: 'Leaders get a reminder to approve their team’s timecards.' },
     { day: 6, label: '2:30 PM', who: 'emp', when: 'Sunday, 2:30 PM PT', h: 'Last chance to correct Friday or weekend time. Workday re-submits at this moment.' },
     { day: 6, label: '6:30 PM', who: 'lead', when: 'Sunday, 6:30 PM PT', h: 'Final leader deadline. Anything not approved is processed for payment as it stands.' }
+  ];
+
+  window.EVENTS_LEAD = [
+    { day: 0, label: 'Auto-fill', who: 'emp', when: 'Monday morning', h: 'Full-time employees’ timecards fill with their standard schedule. Part-time employees and interns create their own.' },
+    { day: 3, label: 'Email', who: 'emp', when: 'Thursday morning', h: 'Employees receive a reminder email every other Thursday so they can review the timecard before it is submitted.' },
+    { day: 3, label: '8:00 PM', who: 'emp', when: 'Thursday, 8:00 PM PT', h: 'Workday submits employee timecards automatically. Employees enter expected Friday and weekend time before then.' },
+    { day: 3, label: '8–9 PM', who: 'warn', when: 'Thursday, 8:00 – 9:00 PM PT', h: 'Employees should not submit manually in this window. It can cause system conflicts.' },
+    { day: 3, label: '9:00 PM', who: 'lead', when: 'Thursday, 9:00 PM PT', h: 'Timecards with overtime or on-call open for your review. You are notified in Workday and by email.' },
+    { day: 4, label: 'Reminder', who: 'lead', when: 'Friday', h: 'You receive a reminder to approve your team’s timecards.' },
+    { day: 6, label: '2:30 PM', who: 'emp', when: 'Sunday, 2:30 PM PT', h: 'Last moment employees can correct Friday or weekend time. Workday re-submits at this moment.' },
+    { day: 6, label: '6:30 PM', who: 'lead', when: 'Sunday, 6:30 PM PT', h: 'Your final deadline. Anything you have not approved is processed for payment as it stands.' }
   ];
 })();

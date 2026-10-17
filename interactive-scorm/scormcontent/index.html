@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Time Tracking Compliance for US Non-Exempt Employees and Leaders</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=9">
 </head>
 <body>
   <a class="skip" href="#stage">Skip to content</a>
@@ -28,10 +28,18 @@
     </div>
   </div>
   <div class="done-toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="icons.js"></script>
-  <script src="scorm.js"></script>
-  <script src="media/videos.js?v=3"></script>
-  <script src="lessons.js?v=3"></script>
-  <script src="app.js?v=3"></script>
+  <div class="lightbox" id="lightbox" hidden>
+    <button type="button" class="lightbox-back" data-zoom-close tabindex="-1" aria-label="Close full size image"></button>
+    <div class="lightbox-panel" role="dialog" aria-modal="true" aria-labelledby="lightbox-cap">
+      <button type="button" class="lightbox-x" data-zoom-close aria-label="Close full size image"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
+      <img id="lightbox-img" alt="" data-zoom-close>
+      <p class="lightbox-cap" id="lightbox-cap"></p>
+    </div>
+  </div>
+  <script src="icons.js?v=2"></script>
+  <script src="scorm.js?v=2"></script>
+  <script src="media/videos.js?v=4"></script>
+  <script src="lessons.js?v=8"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>
