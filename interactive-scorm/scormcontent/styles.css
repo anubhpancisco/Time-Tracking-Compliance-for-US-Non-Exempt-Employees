@@ -229,7 +229,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .sec h3 { font-size: var(--h3); line-height: var(--h3-lh); font-weight: 600; margin: 44px 0 14px; padding-top: 28px; border-top: 1px solid rgba(7, 24, 45, .1); }
 .card h3, .pillar h3, .pillar-detail h3, .pipe-detail h3, .explorer h3, .quiz h3, .vid h3 { margin-top: 0; padding-top: 0; border-top: 0; }
 .sec p, .sec li { max-width: none; }
-/* Card copy starts at the left and each full line reaches the right edge of its card. */
+/* Lesson copy stays left-aligned on both the employee and leader paths. */
 .lbody p,
 .lbody .q-prompt,
 .lbody .opt > span:last-child,
@@ -237,8 +237,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .lbody .how > span:last-child,
 .lbody .ev-detail > span:last-child,
 .lbody .pillar-detail p {
-  text-align: justify;
-  text-align-last: start;
+  text-align: left;
   hyphens: none;
   -webkit-hyphens: none;
 }
