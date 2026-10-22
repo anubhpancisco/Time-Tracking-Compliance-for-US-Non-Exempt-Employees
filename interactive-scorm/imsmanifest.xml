@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<manifest identifier="time-tracking-compliance-us-non-exempt" version="1.0"
+<manifest identifier="time-tracking-compliance-us-non-exempt-v3" version="3.0"
   xmlns="http://www.imsglobal.org/xsd/imscp_v1p1"
   xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_v1p3"
   xmlns:adlseq="http://www.adlnet.org/xsd/adlseq_v1p3"
@@ -29,13 +29,14 @@
     <resource identifier="sco-1" type="webcontent" adlcp:scormType="sco" href="scormcontent/index.html">
       <file href="ScormEnginePackageProperties.xml"/>
       <file href="scormcontent/app.js"/>
-      <file href="scormcontent/assets/Screenshot 2026-08-10 at 2.png"/>
+      <file href="scormcontent/assets/alert-exceeding-daily-hours.jpg"/>
+      <file href="scormcontent/assets/alert-missing-time.jpg"/>
+      <file href="scormcontent/assets/alert-oncall-double-entry.jpg"/>
+      <file href="scormcontent/assets/alert-overlap.jpg"/>
       <file href="scormcontent/assets/how-to-check-if-you-are-non-exempt.png"/>
       <file href="scormcontent/assets/how-to-check-if-your-team-is-non-exempt.png"/>
       <file href="scormcontent/assets/manage-delegation-01.png"/>
       <file href="scormcontent/assets/manage-delegation-02.png"/>
-      <file href="scormcontent/assets/Screenshot 2026-09-28 at 7.jpg"/>
-      <file href="scormcontent/assets/Screenshot 2026-09-28 at 7.png"/>
       <file href="scormcontent/assets/US_Timecard_Actions_and_Deadlines_Cheat_sheet.pdf"/>
       <file href="scormcontent/assets/cover-photo.jpg"/>
       <file href="scormcontent/assets/stock-image-1.jpg"/>
@@ -49,6 +50,7 @@
       <file href="scormcontent/fonts/Inter-Regular.woff"/>
       <file href="scormcontent/icons.js"/>
       <file href="scormcontent/index.html"/>
+      <file href="scormcontent/job-aid.html"/>
       <file href="scormcontent/lessons.js"/>
       <file href="scormcontent/media/alerts-poster.jpg"/>
       <file href="scormcontent/media/alerts.mp4"/>
@@ -56,6 +58,24 @@
       <file href="scormcontent/media/breaks-poster.jpg"/>
       <file href="scormcontent/media/breaks.mp4"/>
       <file href="scormcontent/media/breaks.vtt"/>
+      <file href="scormcontent/media/lead-breaks-poster.jpg"/>
+      <file href="scormcontent/media/lead-breaks.mp4"/>
+      <file href="scormcontent/media/lead-breaks.vtt"/>
+      <file href="scormcontent/media/lead-payroll-poster.jpg"/>
+      <file href="scormcontent/media/lead-payroll.mp4"/>
+      <file href="scormcontent/media/lead-payroll.vtt"/>
+      <file href="scormcontent/media/lead-playbook-poster.jpg"/>
+      <file href="scormcontent/media/lead-playbook.mp4"/>
+      <file href="scormcontent/media/lead-playbook.vtt"/>
+      <file href="scormcontent/media/lead-rates-poster.jpg"/>
+      <file href="scormcontent/media/lead-rates.mp4"/>
+      <file href="scormcontent/media/lead-rates.vtt"/>
+      <file href="scormcontent/media/lead-timecard-poster.jpg"/>
+      <file href="scormcontent/media/lead-timecard.mp4"/>
+      <file href="scormcontent/media/lead-timecard.vtt"/>
+      <file href="scormcontent/media/lead-welcome-poster.jpg"/>
+      <file href="scormcontent/media/lead-welcome.mp4"/>
+      <file href="scormcontent/media/lead-welcome.vtt"/>
       <file href="scormcontent/media/leader-poster.jpg"/>
       <file href="scormcontent/media/leader.mp4"/>
       <file href="scormcontent/media/leader.vtt"/>

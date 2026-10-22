@@ -4,7 +4,12 @@
 (function () {
   'use strict';
   function ic(n, c) { return '<svg class="i' + (c ? ' ' + c : '') + '" aria-hidden="true"><use href="#i-' + n + '"/></svg>'; }
-  function enc(f) { return 'assets/' + encodeURIComponent(f); }
+  function enc(f) {
+    var q = '';
+    var i = String(f).indexOf('?');
+    if (i >= 0) { q = f.slice(i); f = f.slice(0, i); }
+    return 'assets/' + encodeURIComponent(f) + q;
+  }
   function a(url, label) { return '<a class="text-link" href="' + url + '" target="_blank" rel="noopener noreferrer">' + label + '</a>'; }
   /* "How to use this" instruction chip shown above every interactive element.
      kind: pointer (click / select), sliders (slide), play (watch) */
@@ -38,7 +43,7 @@
       var num = m ? m[1] : ((i < 9 ? '0' : '') + (i + 1));
       var name = m ? m[2] : t.title;
       var tone = tones[i] || 'sky';
-      return '<button type="button" class="tab tone-' + tone + '" role="tab" id="' + id + '-tab-' + i + '" data-t="' + i + '" data-tone="' + tone + '" aria-selected="' + on + '" aria-controls="' + id + '-panel-' + i + '" tabindex="' + (on ? '0' : '-1') + '"><span class="walk-num" aria-hidden="true">' + esc(num) + '</span><span class="tab-name">' + esc(name) + '</span><span class="watched">Viewed</span></button>';
+      return '<button type="button" class="tab tone-' + tone + '" role="tab" id="' + id + '-tab-' + i + '" data-t="' + i + '" data-tone="' + tone + '" aria-selected="' + on + '" aria-controls="' + id + '-panel-' + i + '" tabindex="' + (on ? '0' : '-1') + '"><span class="walk-num" aria-hidden="true">' + esc(num) + '</span><span class="tab-copy"><span class="tab-name">' + esc(name) + '</span><span class="tab-cue"><span class="cue-label">' + (on ? 'Playing below' : 'Watch next') + '</span>' + ic('chevron-down') + '</span></span><span class="watched">Viewed</span></button>';
     }).join('');
     var panels = items.map(function (t, i) {
       var on = i === 0;
@@ -80,7 +85,7 @@
     return '<div class="alert-facts rv"><div><b>The error</b><p>' + error + '</p></div><div><b>Policy</b><p>' + policy + '</p></div><div><b>Action required</b><p>' + action + '</p></div></div>';
   }
   function shot(file, title) {
-    return '<p class="alert-look">What the Workday alert looks like</p>' + frame(file, title);
+    return '<p class="alert-look">What the Workday alert looks like</p>' + frame(file, title, true);
   }
   function role(r) { return r === 'lead' ? '<span class="role-tag lead">Leader</span>' : '<span class="role-tag emp">Employee</span>'; }
   function grad(t) { return '<span class="em">' + t + '</span>'; }
@@ -158,7 +163,7 @@
         return jump([['l5-a', 'Timecard'], ['l5-b', 'Breaks'], ['l5-c', 'Overtime'], ['l5-d', 'On-call'], ['l5-q', 'Quick check']]) +
           sec('l5-a', 'A', 'Timecard', lead ? 'The employee timecard, week to week' : 'Your timecard, week to week',
             video(lead ? 'lead-timecard' : 'timecard', lead ? 'Watch: how an employee timecard works' : 'Watch: how your timecard works') +
-            callout('info', 'info', '<p><strong>Time off and hours worked.</strong> If an employee books time off after the timecard was auto-populated, they must delete the conflicting “Hours Worked” entries to prevent overlap and overpayment. Combined daily recorded time cannot exceed the scheduled daily hours. The standard is 8.</p>') +
+            callout('info tint', 'info', '<p><strong>Time off and hours worked.</strong> If an employee books time off after the timecard was auto-populated, they must delete the conflicting “Hours Worked” entries to prevent overlap and overpayment. Combined daily recorded time cannot exceed the scheduled daily hours. The standard is 8.</p>') +
             walks('l5-card', [
               { file: 'how-view-timecard.mp4', title: lead ? 'Video 01: How does an employee view a timecard?' : 'Video 01: How do I view my timecard?' },
               { file: 'how-update-timecard.mp4', title: lead ? 'Video 02: How does an employee update a timecard?' : 'Video 02: How do I update my timecard?' }
@@ -169,7 +174,7 @@
             '<p class="after-media">' + (lead
               ? 'Unpaid meal breaks are determined by the applicable work location state. At this time, employees must receive 30 minutes or more once they have worked 5 hours or more, and a second 30-minute meal break after more than 10 hours.'
               : 'Unpaid meal breaks are determined by the applicable work location state. At this time, 30 minutes or more must be provided once you have worked 5 hours or more, and a second 30-minute meal break is due after more than 10 hours.') + '</p>' +
-            callout('info', 'info', '<p>During a meal period the employee must be completely relieved of duty and allowed to leave the premises. Otherwise that time is hours worked. A rest break cannot be skipped, banked, or saved for future use.</p>') +
+            callout('info tint', 'info', '<p>During a meal period the employee must be completely relieved of duty and allowed to leave the premises. Otherwise that time is hours worked. A rest break cannot be skipped, banked, or saved for future use.</p>') +
             tool('coffee', 'Break clock', 'Try it', 'breakclock',
               how('sliders', 'Slide', lead ? 'the handle to see which breaks are due after an employee works that many hours.' : 'the handle left or right to change the hours worked in a day.') +
               '<div class="range-row"><label for="bc-r">' + (lead ? 'Hours an employee worked today' : 'Hours worked today') + '</label><input id="bc-r" type="range" min="0" max="12" step="0.5" value="0"><span class="val" data-val>0 h</span></div>' +
@@ -177,7 +182,7 @@
               '<div class="bar-key"><span><i class="k-work"></i>Working</span><span><i class="k-rest"></i>Rest, paid</span><span><i class="k-meal"></i>Meal, unpaid</span></div>' +
               '<div class="readout"><div data-r="rest"><small>Rest breaks (paid)</small><b data-rv></b></div><div data-r="meal1"><small>Meal break #1 (unpaid)</small><b data-rv></b></div><div data-r="meal2"><small>Meal break #2 (unpaid)</small><b data-rv></b></div></div>' +
               '<div class="verdict good" data-verdict></div>') +
-            callout('info', 'info', lead
+            callout('info tint', 'info', lead
               ? '<p><strong>Logging a meal break:</strong> the employee chooses “Meal” as the reason when they enter their “Out” time.</p>'
               : '<p><strong>Logging a meal break:</strong> choose “Meal” as the reason when you enter your “Out” time.</p>') +
             walk('how-missed-meal.mp4', lead ? 'How does an employee report an involuntarily missed meal break?' : 'How do I report an involuntarily missed meal break?') +
@@ -253,30 +258,25 @@
               'Requesting time off in arrears, after the timecard has already been pre-populated for the week, often leaves both time off and hours worked on the same day.',
               'Company policy does not support overlapping records.',
               'Reconcile the entries by adjusting time off or correcting hours worked. Submit time off requests in advance whenever you can.'
-            ) + shot('Screenshot 2026-08-10 at 2.png', 'Workday alert: overlapping records')) +
+            ) + shot('alert-overlap.jpg', 'Workday alert: overlapping records')) +
           sec('l7-daily', 'C', 'Exceeding daily scheduled hours', 'The day adds up to more than it should',
             facts(
               'Time off and hours worked on the same day add up to more than the standard daily schedule: 8 hours for full-time employees, and less for part-time.',
               'Total daily recorded time must align with the standard daily schedule.',
               'Adjust the entries so the total does not exceed the standard day. If you have 4 hours of time off and work 6 hours, reduce the time off to 2 hours so the day totals 8.'
-            ) +
-            how('pointer', 'Try this', 'Use the daily-total checker below. Change the hours worked and the time off, then click Apply the fix so the day matches a standard 8-hour schedule.') +
-            tool('calendar', 'Daily-total checker', 'Try it', 'dayfit',
-              '<div class="range-row"><label>Hours worked</label><span class="stepper-ctl"><button type="button" data-d="w-" aria-label="Fewer hours worked">&minus;</button><output data-o="w">6</output><button type="button" data-d="w+" aria-label="More hours worked">+</button></span><label style="min-width:auto;margin-left:24px">Time off</label><span class="stepper-ctl"><button type="button" data-d="t-" aria-label="Less time off">&minus;</button><output data-o="t">4</output><button type="button" data-d="t+" aria-label="More time off">+</button></span></div>' +
-              '<div class="tc"><div class="h"><span>Tuesday</span><span data-total></span></div><div class="r"><span class="chipx work" data-cw></span><span class="chipx off" data-ct></span></div></div>' +
-              '<div class="verdict good" data-verdict></div><p style="margin:14px 0 0"><button type="button" class="btn ghost" data-act="dayfit-fix" data-fix>' + ic('check') + ' Apply the fix</button></p>')) +
+            ) + shot('alert-exceeding-daily-hours.jpg', 'Workday alert: exceeding daily scheduled hours')) +
           sec('l7-oncall', 'D', 'On-call eligible employees only', 'On-call double entry',
             facts(
               'Both “On Call Hours Worked” and “On Call Standby” are recorded for the same week.',
               'The US On-Call Addendum does not permit both of these entries in the same week.',
               'Review the entries and correct the timecard so only the appropriate on-call status is recorded.'
-            ) + shot('Screenshot 2026-09-28 at 7.png', 'Workday alert: on-call double entry')) +
+            ) + shot('alert-oncall-double-entry.jpg?v=2', 'Workday alert: on-call double entry')) +
           sec('l7-missing', 'E', 'Part-time employees and interns only', 'Missing time entries',
             facts(
               'Hours worked for the current pay period were not recorded.',
               'Accurate and prompt time recording is mandatory for payroll processing.',
               'Log into Workday and submit the hours as soon as the reminder arrives, so payment is not delayed.'
-            ) + shot('Screenshot 2026-09-28 at 7.jpg', 'Workday alert: missing time entries'));
+            ) + shot('alert-missing-time.jpg', 'Workday alert: missing time entries'));
       }
     },
     /* ------------------------------------------------------------------ 8 */
@@ -289,7 +289,7 @@
             video('lead-playbook', 'Watch: the leader playbook') +
             '<div class="stack">' +
             callout('warn', 'alert', '<p><strong>Friday reminder.</strong> Automated reminders to approve your team’s timecards are sent on Fridays of the week before payday. Review them before automatic processing on Sunday.</p>') +
-            callout('info', 'info', '<p><strong>Overlap alerts.</strong> Workday alerts you when hours worked overlap time off, and when on-call standby overlaps on-call hours worked. Resolve those discrepancies promptly.</p>') +
+            callout('info tint', 'info', '<p><strong>Overlap alerts.</strong> Workday alerts you when hours worked overlap time off, and when on-call standby overlaps on-call hours worked. Resolve those discrepancies promptly.</p>') +
             '</div>') +
           sec('l8-week', '', 'The payroll week', 'What your team does, and what you do',
             video('lead-payroll', 'Watch: one payroll week') +
@@ -321,13 +321,13 @@
           '<div class="res-grid"><div class="card rv"><h3><span class="ico good" style="margin:0;width:44px;height:44px;font-size:22px">' + ic('file') + '</span>Job aid</h3>' +
           '<div class="sheet-wrap"><p>Timecard actions and deadlines for the bi-weekly cycle.</p>' +
           '<table class="sheet"><thead><tr><th>Task</th><th>When</th><th>Action</th></tr></thead><tbody>' +
-          '<tr><td>Daily timecard review</td><td>Daily</td><td>Check pre-populated time for the day in Workday and update it if needed.</td></tr>' +
-          '<tr><td>Advance time off booking</td><td>In advance</td><td>Submit planned time off in the Absence Calendar to prevent overlaps.</td></tr>' +
-          '<tr><td>Thursday auto-submission</td><td>Thursday 8:00 PM PT</td><td>Automated submission occurs. Avoid a manual submit from 8:00 to 9:00 PM PT.</td></tr>' +
-          '<tr><td>Timecards available</td><td>Thursday 9:00 PM PT</td><td>Timecards with overtime or on-call become available for leader review.</td></tr>' +
-          '<tr><td>Sunday re-submission</td><td>Sunday 2:30 PM PT</td><td>Final deadline for employees to edit Friday or weekend hours.</td></tr>' +
-          '<tr><td>Final leader approval</td><td>Sunday 6:30 PM PT</td><td>Final deadline for leader review and approval before auto-processing.</td></tr>' +
-          '</tbody></table></div><p class="sheet-actions"><a class="btn" href="assets/US_Timecard_Actions_and_Deadlines_Cheat_sheet.pdf" download="US_Timecard_Actions_and_Deadlines_Cheat_sheet.pdf">' + ic('file') + ' Download job aid (PDF)</a></p></div><div class="card rv"><h3><span class="ico" style="margin:0;width:44px;height:44px;font-size:22px">' + ic('laptop') + '</span>Core Time Tracking Tools</h3>' +
+          '<tr><td>Daily timecard review</td><td><span class="when">Daily</span></td><td>Check pre-populated time for the day in Workday and update it if needed.</td></tr>' +
+          '<tr><td>Advance time off booking</td><td><span class="when">In advance</span></td><td>Submit planned time off in the Absence Calendar to prevent overlaps.</td></tr>' +
+          '<tr><td>Thursday auto-submission</td><td><span class="when">Thursday 8:00 PM PT</span></td><td>Automated submission occurs. Avoid a manual submit from 8:00 to 9:00 PM PT.</td></tr>' +
+          '<tr><td>Timecards available</td><td><span class="when">Thursday 9:00 PM PT</span></td><td>Timecards with overtime or on-call become available for leader review.</td></tr>' +
+          '<tr><td>Sunday re-submission</td><td><span class="when">Sunday 2:30 PM PT</span></td><td>Final deadline for employees to edit Friday or weekend hours.</td></tr>' +
+          '<tr><td>Final leader approval</td><td><span class="when">Sunday 6:30 PM PT</span></td><td>Final deadline for leader review and approval before auto-processing.</td></tr>' +
+          '</tbody></table></div><p class="sheet-actions"><button type="button" class="btn" data-job-aid>' + ic('file') + ' Download job aid (PDF)</button></p></div><div class="card rv"><h3><span class="ico" style="margin:0;width:44px;height:44px;font-size:22px">' + ic('laptop') + '</span>Core Time Tracking Tools</h3>' +
           links([[URL_WD, 'Workday', 'The official system of record for all time tracking and payroll.'], [URL_KB, 'How to enter time in Workday - US and Canada', 'Step-by-step instructions for editing, deleting, and adding time blocks.'], [URL_TT, 'Time Tracking Snow portal', 'Guidance page regarding Time Tracking with different resources.']]) +
           '</div><div class="card rv"><h3><span class="ico sky" style="margin:0;width:44px;height:44px;font-size:22px">' + ic('file') + '</span>Policies and Addenda</h3>' +
           links([[URL_POL, 'Time Tracking Policy for US Non-Exempt Employees', 'Comprehensive policy details.'], [URL_GSP, 'Global Supplemental Pay Site', 'Information regarding policy and country-specific addenda.'], [URL_ADD, 'US On-Call Addendum', 'Specific rules for on-call eligibility and reporting.']]) +

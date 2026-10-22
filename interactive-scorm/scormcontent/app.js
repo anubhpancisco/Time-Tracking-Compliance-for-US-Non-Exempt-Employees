@@ -113,7 +113,7 @@
   }
   function markDone(i) {
     if (state.role !== 'emp' && state.role !== 'lead') return;
-    if (isDone(i)) return;
+    if (!onPath(i) || isDone(i)) return;
     roleList(state.role).push(i);
     save(); drawSidebar();
     var ids = pathIds();
@@ -152,7 +152,7 @@
     return '<section class="cover2"><header class="c-hero"><img src="assets/cover-photo.jpg" alt=""><h1>Time Tracking Compliance for<br>US Non-Exempt Employees<br>and Leaders</h1><svg class="c-wave" viewBox="0 0 1024 92" preserveAspectRatio="none" aria-hidden="true"><path fill="#f4f7fb" d="M0 31C90 58 170 78 248 76C400 72 560 46 760 28C900 16 970 12 1024 10V92H0Z"/></svg></header>' +
       '<div class="c-copy"><p class="wel">Welcome to US time tracking training!</p>' +
       '<p class="gap">This training is designed to increase awareness and understanding of time tracking responsibilities for US non-exempt employees and their leaders. The course addresses the critical business need to ensure accurate timecard submissions and approvals to comply with legal requirements under the Fair Labor Standards Act (FLSA) and Cisco&rsquo;s policies.</p>' +
-      '<p>Employee learners will gain knowledge about their non-exempt status and learn how to correctly submit and modify timecards in the Workday system. Leadership learners will understand their role in reviewing, validating, and approving timecards.</p>' +
+      '<p>Employee learners will gain knowledge about their non-exempt status and learn how to correctly submit and modify timecards in the Workday system. People Leaders will understand their role in reviewing, validating, and approving timecards.</p>' +
       '<p>By completing this course, employees and leaders will be equipped to perform their respective time tracking duties accurately and timely, supporting Cisco&rsquo;s commitment to legal compliance, operational efficiency, and employee well-being.</p>' +
       '<p class="dur">Choose your path</p>' +
       '<div class="path-row" role="group" aria-label="Choose your path">' +
@@ -384,6 +384,8 @@
         var on = t === b;
         t.setAttribute('aria-selected', on ? 'true' : 'false');
         t.tabIndex = on ? 0 : -1;
+        var cue = $('.cue-label', t);
+        if (cue) cue.textContent = on ? 'Playing below' : 'Watch next';
       });
       $$('.tabpanel', el).forEach(function (p) {
         var on = p.dataset.p === b.dataset.t;
@@ -506,6 +508,8 @@
       a.className = rest ? 'on' : 'off'; $('[data-rv]', a).textContent = rest ? rest + ' × 10 min' : 'Not yet';
       b1.className = meals >= 1 ? 'on warn' : 'off'; $('[data-rv]', b1).textContent = meals >= 1 ? '30 min' : 'Not yet';
       b2.className = meals >= 2 ? 'on warn' : 'off'; $('[data-rv]', b2).textContent = meals >= 2 ? '30 min' : 'Not yet';
+      if (!moved) { ver.hidden = true; return; }
+      ver.hidden = false;
       var msg;
       var lead = state.role === 'lead';
       if (h < 4) msg = 'Under 4 hours: no required break has been earned yet.';
@@ -514,7 +518,9 @@
       else msg = lead ? 'Past 10 hours: a second 30-minute meal break is also due. If a break is involuntarily missed, the employee reports it (rest: the form to you; meal: consecutive hours on the timecard).' : 'Past 10 hours: a second 30-minute meal break is also due. If any break is involuntarily missed, report it (rest: form to your leader; meal: record the hours worked on your timecard).';
       setIcon(ver, 'info', msg);
     }
-    r.addEventListener('input', draw); draw();
+    var moved = false;
+    r.addEventListener('input', function () { moved = true; draw(); });
+    draw();
   };
 
   /* --- overtime calculator --- */
@@ -532,6 +538,8 @@
       val.textContent = f(h);
       [['reg', reg], ['ot', ot], ['dt', dt]].forEach(function (p) { var e = rd(p[0]); e.className = p[1] > 0 ? (p[0] === 'reg' ? 'on' : 'on warn') : 'off'; $('[data-rv]', e).textContent = f(p[1]); });
       var e2 = rd('eq'); e2.className = 'on good'; $('[data-rv]', e2).textContent = f(eq) + ' of pay';
+      if (!moved) { ver.hidden = true; return; }
+      ver.hidden = false;
       var kind = h <= 8 ? 'good' : (dt > 0 ? 'bad' : 'warn');
       ver.className = 'verdict ' + kind;
       var lead = state.role === 'lead';
@@ -542,40 +550,8 @@
           : (lead ? 'Hours beyond 8 in a day are paid at 1.5 times the regular rate. Approve overtime before the employee starts, and make sure every hour is recorded in Workday.' : 'Hours beyond 8 in a day are paid at 1.5 times your regular rate. Get your manager’s pre-approval before you start, and record every hour in Workday.'));
       setIcon(ver, kind === 'good' ? 'check-circle' : 'alert', msg);
     }
-    r.addEventListener('input', draw); draw();
-  };
-
-  /* --- daily total checker --- */
-  W.dayfit = function (el) {
-    var s = { w: 6, t: 4 }, STD = 8, ver = $('[data-verdict]', el), fix = $('[data-fix]', el);
-    function draw() {
-      var tot = s.w + s.t;
-      $('[data-o="w"]', el).textContent = s.w; $('[data-o="t"]', el).textContent = s.t;
-      $('[data-total]', el).textContent = tot + ' h total · standard ' + STD + ' h';
-      $('[data-cw]', el).textContent = s.w + ' h worked'; $('[data-ct]', el).textContent = s.t + ' h time off';
-      $('[data-ct]', el).style.display = s.t ? '' : 'none'; $('[data-cw]', el).style.display = s.w ? '' : 'none';
-      fix.style.display = 'none';
-      if (tot > STD && s.t > 0) {
-        ver.className = 'verdict bad'; fix.style.display = '';
-        setIcon(ver, 'alert', 'Workday alert: ' + tot + ' hours is more than your standard ' + STD + '-hour day. Hours worked is a fact, so reduce the time off to ' + Math.max(0, STD - s.w) + ' h.');
-      } else if (tot > STD) {
-        ver.className = 'verdict warn';
-        setIcon(ver, 'info', s.w + ' hours worked is above 8 in a day. That is overtime: it needs your manager’s pre-approval and must be recorded.');
-      } else if (tot < STD) {
-        ver.className = 'verdict warn';
-        setIcon(ver, 'info', 'Below the standard ' + STD + ' hours. If you were scheduled to work, make sure every scheduled hour is recorded as either worked or time off.');
-      } else {
-        ver.className = 'verdict good';
-        setIcon(ver, 'check-circle', 'Matches your standard day. Nothing for Workday to flag.');
-      }
-    }
-    el.addEventListener('click', function (e) {
-      var b = e.target.closest('[data-d]'); if (b) {
-        var k = b.dataset.d; if (k === 'w+') s.w = Math.min(12, s.w + 1); if (k === 'w-') s.w = Math.max(0, s.w - 1);
-        if (k === 't+') s.t = Math.min(8, s.t + 1); if (k === 't-') s.t = Math.max(0, s.t - 1); draw(); return;
-      }
-      if (e.target.closest('[data-fix]')) { s.t = Math.max(0, STD - s.w); draw(); }
-    });
+    var moved = false;
+    r.addEventListener('input', function () { moved = true; draw(); });
     draw();
   };
 
@@ -676,7 +652,22 @@
   }
 
   /* ------------------------------------------------------------ global events */
+  function openJobAid() {
+    var w = 560, h = 720;
+    var left = Math.max(0, Math.round((screen.availWidth - w) / 2));
+    var top = Math.max(0, Math.round((screen.availHeight - h) / 2));
+    var features = 'popup=yes,width=' + w + ',height=' + h + ',left=' + left + ',top=' + top + ',resizable=yes,scrollbars=yes';
+    var pop = window.open('job-aid.html', 'jobAid', features);
+    if (pop) { pop.focus(); return; }
+    var a = document.createElement('a');
+    a.href = 'assets/US_Timecard_Actions_and_Deadlines_Cheat_sheet.pdf';
+    a.setAttribute('download', 'US_Timecard_Actions_and_Deadlines_Cheat_sheet.pdf');
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
   document.addEventListener('click', function (e) {
+    if (e.target.closest('[data-job-aid]')) { e.preventDefault(); openJobAid(); return; }
     if (e.target.closest('[data-zoom-close]')) { closeZoom(); return; }
     var zoomBtn = e.target.closest('[data-full]');
     if (zoomBtn) { openZoom(zoomBtn); return; }
