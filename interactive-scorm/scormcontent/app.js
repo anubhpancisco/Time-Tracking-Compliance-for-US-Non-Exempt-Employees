@@ -385,7 +385,11 @@
         t.setAttribute('aria-selected', on ? 'true' : 'false');
         t.tabIndex = on ? 0 : -1;
         var cue = $('.cue-label', t);
-        if (cue) cue.textContent = on ? 'Playing below' : 'Watch next';
+        if (cue) {
+          var replay = !on && t.classList.contains('is-watched');
+          t.classList.toggle('is-replay', replay);
+          cue.textContent = on ? 'Playing below' : (replay ? 'Watch again' : 'Watch next');
+        }
       });
       $$('.tabpanel', el).forEach(function (p) {
         var on = p.dataset.p === b.dataset.t;
