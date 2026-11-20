@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<manifest identifier="time-tracking-compliance-us-non-exempt-v3" version="3.0"
+<manifest identifier="time-tracking-compliance-us-non-exempt" version="5"
   xmlns="http://www.imsglobal.org/xsd/imscp_v1p1"
   xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_v1p3"
   xmlns:adlseq="http://www.adlnet.org/xsd/adlseq_v1p3"
@@ -13,9 +13,9 @@
   </metadata>
   <organizations default="org-1">
     <organization identifier="org-1" adlseq:objectivesGlobalToSystem="false">
-      <title>Time Tracking Compliance for US Non-Exempt Employees and Leaders</title>
+      <title>Time Tracking Compliance</title>
       <item identifier="item-1" identifierref="sco-1" isvisible="true">
-        <title>Time Tracking Compliance for US Non-Exempt Employees and Leaders</title>
+        <title>Time Tracking Compliance</title>
         <imsss:sequencing>
           <imsss:deliveryControls tracked="true" completionSetByContent="true" objectiveSetByContent="false"/>
         </imsss:sequencing>

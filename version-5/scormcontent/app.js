@@ -4,21 +4,52 @@
   'use strict';
   var L = window.LESSONS, N = L.length, ic = window.H.ic;
   var PATHS = {
-    emp: { ids: [0, 1, 2, 3, 4, 5, 6, 8, 9], label: 'Employee', time: 'About 30 minutes', done: 'You are finished when you have completed these 9 lessons.' },
-    lead: { ids: [0, 4, 7, 8], label: 'People Leader', time: 'About 15 minutes', done: 'You are finished when you have completed these 4 lessons.' }
+    /* Lesson ids are positions in LESSONS (lessons.js) and are what gets saved, so they never change.
+       The order of an array is the order a learner sees: for employees the Knowledge check (9)
+       comes before Resources & Enablement (8). */
+    emp: {
+      ids: [0, 1, 2, 3, 4, 5, 6, 9, 8, 10], label: 'Employee', time: 'About 30 minutes', done: 'You are finished when you have completed every lesson and submitted the acknowledgement at the end of this path.',
+      /* Mockup v4: Who / Where / Why are three topics of ONE lesson. Each topic keeps its own page, lesson id,
+         saved progress and #/n address; only the way they are shown (sidebar, header, numbering) is grouped. */
+      groups: [{ ids: [1, 2, 3], title: 'Time Tracking: Who, Where, and Why?', icons: ['users', 'laptop', 'scale'] }]
+    },
+    lead: { ids: [0, 4, 7, 8, 10], label: 'People Leader', time: 'About 12 minutes', done: 'You are finished when you have completed every lesson and submitted the acknowledgement at the end of this path.' }
   };
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
   var stage = $('#stage'), toastEl = $('#toast');
   var state = window.SCORM.readState();
-  var cur = -1, io = null, endIo = null, endScroll = null, searchIdx = null, part = 0;
+  var cur = -1, io = null, endIo = null, endScroll = null, searchIdx = null, part = 0, ccWant = false;
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function pathMeta() { return PATHS[state.role] || null; }
   function pathIds() { var meta = pathMeta(); return meta ? meta.ids : []; }
   function onPath(i) { return pathIds().indexOf(i) > -1; }
   function pathComplete() { var ids = pathIds(); return ids.length > 0 && ids.every(isDone); }
-  function lTitle(i) { return L[i].title; }
+  function lTitle(i) { var l = L[i]; return state.role === 'lead' && l.titleLead ? l.titleLead : l.title; }
+  /* Grouped lessons (see PATHS.emp.groups). A lesson is a "unit" in the sidebar and in "Lesson N of M":
+     an ungrouped lesson is one unit, a group is one unit. */
+  function groupOf(i) {
+    var meta = pathMeta(), gs = (meta && meta.groups) || [];
+    for (var k = 0; k < gs.length; k++) { if (gs[k].ids.indexOf(i) > -1) return gs[k]; }
+    return null;
+  }
+  function units() { return pathIds().filter(function (i) { var g = groupOf(i); return !g || g.ids[0] === i; }); }
+  function lessonNo(i) { var g = groupOf(i); return units().indexOf(g ? g.ids[0] : i) + 1; }
+  function groupMins(g) { return g.ids.reduce(function (s, i) { return s + L[i].mins; }, 0); }
+  function groupDone(g) { return g.ids.every(isDone); }
+  function groupOpen(g) {
+    if (g.ids.indexOf(cur) > -1) return cur;
+    for (var k = 0; k < g.ids.length; k++) { if (!isDone(g.ids[k])) return g.ids[k]; }
+    return g.ids[0];
+  }
+  /* Progress of a group, 0-100: finished topics count in full, the topic being read counts its slice. */
+  function groupPart(g) {
+    var sum = 0;
+    g.ids.forEach(function (i) { sum += isDone(i) ? 100 : sliceNow(i); });
+    return Math.round(sum / g.ids.length);
+  }
+  function holdsGate(i) { return !!(L[i] && (L[i].completeOnQuiz || L[i].completeOnAck)); }
   function lessonMins(i) { var l = L[i]; return state.role === 'lead' && l.minsLead ? l.minsLead : l.mins; }
   function lessonGoals(i) { var l = L[i]; return state.role === 'lead' && l.goalsLead ? l.goalsLead : l.goals; }
   function roleList(role) {
@@ -44,16 +75,30 @@
     if (isDone(i) || i !== cur) return 0;
     return part >= 25 ? part : 25;
   }
+  function lessonLinkHTML(o) {
+    var st = o.done ? ' is-done' : (o.slice ? ' is-part' : '');
+    var sr = o.done ? ' (completed)' : (o.slice ? ' (' + o.slice + '% through)' : '');
+    var tickStyle = o.slice ? ' style="--part:' + o.slice + '%"' : '';
+    return '<button type="button" class="' + o.cls + st + (o.current ? ' is-current' : '') + '" data-go="' + o.go + '"' + (o.ids ? ' data-ids="' + o.ids + '"' : '') + (o.page ? ' aria-current="page"' : '') + '>' + o.lead +
+      '<span class="lt">' + o.title + '</span><span class="tick" aria-hidden="true"' + tickStyle + '>' + (o.done ? ic('check') : '') + '</span><span class="sr">' + sr + '</span></button>';
+  }
   function drawSidebar() {
     var ids = pathIds();
     var list = $('#lessons');
     list.classList.toggle('is-compact', ids.length > 0 && ids.length < 6);
-    list.innerHTML = ids.length ? ids.map(function (i) {
-      var slice = sliceNow(i);
-      var st = isDone(i) ? ' is-done' : (slice ? ' is-part' : '');
-      var sr = isDone(i) ? ' (completed)' : (slice ? ' (' + slice + '% through)' : '');
-      var tickStyle = slice ? ' style="--part:' + slice + '%"' : '';
-      return '<button type="button" class="lesson-link' + st + (i === cur ? ' is-current' : '') + '" data-go="' + i + '"' + (i === cur ? ' aria-current="page"' : '') + '><span class="lines" aria-hidden="true">' + ic('doc-lines') + '</span><span class="lt">' + lTitle(i) + '</span><span class="tick" aria-hidden="true"' + tickStyle + '>' + (isDone(i) ? ic('check') : '') + '</span><span class="sr">' + sr + '</span></button>';
+    list.innerHTML = ids.length ? units().map(function (i) {
+      var g = groupOf(i);
+      if (!g) {
+        var slice = sliceNow(i);
+        return lessonLinkHTML({ cls: 'lesson-link', go: i, done: isDone(i), slice: slice, current: i === cur, page: i === cur, title: lTitle(i), lead: '<span class="lines" aria-hidden="true">' + ic('doc-lines') + '</span>' });
+      }
+      /* A grouped lesson: the lesson row, then its topics (each with its icon and its own tick). */
+      var inGroup = g.ids.indexOf(cur) > -1, gp = groupPart(g), all = groupDone(g);
+      var parent = lessonLinkHTML({ cls: 'lesson-link is-parent', go: groupOpen(g), ids: g.ids.join(','), done: all, slice: all ? 0 : (inGroup || g.ids.some(isDone) ? gp : 0), current: inGroup, page: false, title: g.title, lead: '<span class="lines" aria-hidden="true">' + ic('doc-lines') + '</span>' });
+      var subs = g.ids.map(function (id, k) {
+        return lessonLinkHTML({ cls: 'sub-link', go: id, done: isDone(id), slice: sliceNow(id), current: id === cur, page: id === cur, title: L[id].title, lead: '<span class="si" aria-hidden="true">' + ic(g.icons[k]) + '</span>' });
+      }).join('');
+      return parent + '<div class="sub-list" data-ids="' + g.ids.join(',') + '">' + subs + '</div>';
     }).join('') : '<p class="side-empty">Choose a path on the introduction page.</p>';
     $('#plabel').textContent = pct() + '% COMPLETE';
     $('#pbar').style.width = pct() + '%';
@@ -61,18 +106,20 @@
   }
   function buildSearchIdx() {
     if (searchIdx) return;
-    searchIdx = L.map(function (l) {
+    searchIdx = L.map(function (l, n) {
       var doc = new DOMParser().parseFromString('<body>' + l.html('emp') + l.html('lead') + '</body>', 'text/html');
-      return (l.title + ' ' + doc.body.textContent).toLowerCase();
+      var g = ((PATHS.emp.groups || []).filter(function (x) { return x.ids.indexOf(n) > -1; })[0]) || null;
+      return ((g ? g.title : '') + ' ' + (l.titleLead || '') + ' ' + (l.kicker || '') + ' ' + l.title + ' ' + doc.body.textContent).toLowerCase();
     });
   }
   function applySearch() {
     var q = $('#search').value.trim().toLowerCase();
     if (q) buildSearchIdx();
     $('#lessons').classList.toggle('is-filtering', !!q);
-    $$('.lesson-link').forEach(function (b) {
-      var i = +b.dataset.go;
-      b.style.display = !q || (searchIdx[i] && searchIdx[i].indexOf(q) > -1) ? '' : 'none';
+    /* A grouped lesson (row + its topic list) is shown when any of its topics matches. */
+    $$('.lesson-link, .sub-list').forEach(function (b) {
+      var hit = !q || (b.dataset.ids || b.dataset.go).split(',').some(function (n) { return searchIdx[+n] && searchIdx[+n].indexOf(q) > -1; });
+      b.style.display = hit ? '' : 'none';
     });
   }
   function scrollSlice() {
@@ -92,16 +139,20 @@
   function applyPart(next) {
     if (cur < 0 || isDone(cur)) return;
     part = next;
-    var btn = $('.lesson-link.is-current');
+    var g = groupOf(cur);
+    paintTick(g ? $('.sub-link.is-current') : $('.lesson-link.is-current'), next);
+    if (g) paintTick($('.lesson-link.is-parent.is-current'), groupPart(g));
+  }
+  function paintTick(btn, p) {
     if (!btn) return;
     btn.classList.add('is-part');
     var tick = $('.tick', btn);
-    if (tick) tick.style.setProperty('--part', next + '%');
+    if (tick) tick.style.setProperty('--part', p + '%');
     var sr = $('.sr', btn);
-    if (sr) sr.textContent = ' (' + next + '% through)';
+    if (sr) sr.textContent = ' (' + p + '% through)';
   }
   function paintPart() {
-    if (cur < 0 || isDone(cur) || L[cur].completeOnQuiz) return;
+    if (cur < 0 || isDone(cur) || holdsGate(cur)) return;
     var next = scrollSlice();
     if (next !== part) applyPart(next);
   }
@@ -116,10 +167,12 @@
     if (!onPath(i) || isDone(i)) return;
     roleList(state.role).push(i);
     save(); drawSidebar();
-    var ids = pathIds();
-    var pos = ids.indexOf(i) + 1;
-    toast(pathComplete() ? 'Course complete. Well done!' : 'Lesson ' + pos + ' complete');
+    var g = groupOf(i);
+    var msg = g && !groupDone(g) ? 'Topic complete' : 'Lesson ' + lessonNo(i) + ' complete';
+    toast(pathComplete() ? 'Course complete. Well done!' : msg);
   }
+  /* Submitting the acknowledgement completes the acknowledgement lesson only.
+     Every other lesson is completed by the learner finishing that lesson. */
   var toastT;
   function toast(msg) {
     toastEl.innerHTML = ic('check-circle') + ' <span></span>';
@@ -136,7 +189,11 @@
   }
   function pathNote(meta) {
     if (!meta) return '';
-    return '<div class="note"><p class="note-h">' + meta.label + ' path</p><p class="dur">' + meta.time + '. ' + meta.done + '</p><ol class="path-list">' + meta.ids.map(function (i) { return '<li>' + lTitle(i) + '</li>'; }).join('') + '</ol></div>';
+    return '<div class="note"><p class="note-h">' + meta.label + ' Path</p><p class="dur">' + meta.time + '. ' + meta.done + '</p><ol class="path-list">' + units().map(function (i) {
+      var g = groupOf(i);
+      if (!g) return '<li>' + lTitle(i) + '</li>';
+      return '<li>' + g.title + '<ul class="path-sub">' + g.ids.map(function (id) { return '<li>' + L[id].title + '</li>'; }).join('') + '</ul></li>';
+    }).join('') + '</ol></div>';
   }
   function pathCard(role, icon, title, blurb) {
     var done = pathDone(role);
@@ -150,11 +207,12 @@
     var started = meta && meta.ids.some(isDone);
     var label = complete ? 'Restart course' : (started ? 'Resume course' : 'Start course');
     return '<section class="cover2"><header class="c-hero"><img src="assets/cover-photo.jpg" alt=""><h1>Time Tracking Compliance for<br>US Non-Exempt Employees<br>and Leaders</h1><svg class="c-wave" viewBox="0 0 1024 92" preserveAspectRatio="none" aria-hidden="true"><path fill="#f4f7fb" d="M0 31C90 58 170 78 248 76C400 72 560 46 760 28C900 16 970 12 1024 10V92H0Z"/></svg></header>' +
-      '<div class="c-copy"><p class="wel">Welcome to US time tracking training!</p>' +
+      '<div class="c-copy">' +
+      '<p class="wel">Welcome to US time tracking training!</p>' +
       '<p class="gap">This training is designed to increase awareness and understanding of time tracking responsibilities for US non-exempt employees and their leaders. The course addresses the critical business need to ensure accurate timecard submissions and approvals to comply with legal requirements under the Fair Labor Standards Act (FLSA) and Cisco&rsquo;s policies.</p>' +
       '<p>Employee learners will gain knowledge about their non-exempt status and learn how to correctly submit and modify timecards in the Workday system. People Leaders will understand their role in reviewing, validating, and approving timecards.</p>' +
       '<p>By completing this course, employees and leaders will be equipped to perform their respective time tracking duties accurately and timely, supporting Cisco&rsquo;s commitment to legal compliance, operational efficiency, and employee well-being.</p>' +
-      '<p class="dur">Choose your path</p>' +
+      '<p class="dur">Choose your path:</p>' +
       '<div class="path-row" role="group" aria-label="Choose your path">' +
       pathCard('emp', 'user', 'Employee', 'Track and submit your own time') +
       pathCard('lead', 'users', 'People Leader', 'Review and approve your team&rsquo;s time') + '</div>' +
@@ -178,23 +236,57 @@
     }
     drawSidebar();
   }
+  function heroKicker(i) {
+    var ids = pathIds();
+    if (state.role === 'lead') {
+      var counted = ids.filter(function (id) { return L[id].counted; });
+      var n = counted.indexOf(i);
+      if (n > -1) return 'Lesson ' + (n + 1) + ' of ' + counted.length;
+      return L[i].kicker || 'Section';
+    }
+    return 'Lesson ' + lessonNo(i) + ' of ' + (units().length || N);
+  }
+  /* Header of a topic inside a grouped lesson: the lesson name stays constant and a trail shows the topics. */
+  function trailHTML(g) {
+    return '<div class="trail" role="group" aria-label="Topics in this lesson">' + g.ids.map(function (id, k) {
+      var here = id === cur, done = isDone(id);
+      var cls = here ? 'cur' : (done ? 'done' : 'next');
+      var sr = here ? ' (you are here)' : (done ? ' (completed)' : '');
+      return '<div class="tnode ' + cls + '"' + (here ? ' aria-current="step"' : '') + '><span class="dot" aria-hidden="true">' + (done && !here ? ic('check') : ic(g.icons[k])) + '</span><span>' + L[id].title + '<span class="sr">' + sr + '</span></span></div>' +
+        (k < g.ids.length - 1 ? '<i class="tline' + (done ? ' on' : '') + '" aria-hidden="true"></i>' : '');
+    }).join('') + '</div>';
+  }
+  function topicHTML(i, g) {
+    return '<div class="topic"><span class="ti" aria-hidden="true">' + ic(g.icons[g.ids.indexOf(i)]) + '</span><h2>' + L[i].title + '</h2></div>';
+  }
   function heroHTML(i) {
     var l = L[i];
-    var ids = pathIds();
-    var n = ids.indexOf(i) + 1;
-    var total = ids.length || N;
+    var n = lessonNo(i);
+    var g = groupOf(i);
+    if (g) {
+      return '<header class="lhero is-bar"><img class="bg" src="assets/' + l.hero + '" alt=""><div class="ghost" aria-hidden="true">' + pad2(n) + '</div><div class="lhero-in">' +
+        '<span class="kicker">' + ic('layers') + ' ' + heroKicker(i) + '<span class="kmins">' + groupMins(g) + ' min</span></span><h1>' + g.title + '</h1>' + trailHTML(g) + '</div></header>';
+    }
     return '<header class="lhero"><img class="bg" src="assets/' + l.hero + '" alt=""><div class="ghost" aria-hidden="true">' + pad2(n) + '</div><div class="lhero-in">' +
-      '<span class="kicker">' + ic('layers') + ' Lesson ' + n + ' of ' + total + '</span><h1>' + l.title + '</h1><div class="meta"><span class="pill">' + ic('clock') + ' ' + lessonMins(i) + ' min</span></div>' +
+      '<span class="kicker">' + ic('layers') + ' ' + heroKicker(i) + '</span><h1>' + lTitle(i) + '</h1><div class="meta"><span class="pill">' + ic('clock') + ' ' + lessonMins(i) + ' min</span></div>' +
       '<div class="goals-h">By the end of this lesson</div><ul class="goals">' + lessonGoals(i).map(function (g) { return '<li>' + ic('check-circle') + '<span>' + g + '</span></li>'; }).join('') + '</ul></div></header>';
   }
   function footHTML(i) {
     var ids = pathIds();
     var pos = ids.indexOf(i);
     if (pos > -1 && pos < ids.length - 1) {
-      return '<button type="button" class="nextbar" data-go="' + ids[pos + 1] + '">' + ic('arrow-down') + '<span>Next lesson &mdash; ' + lTitle(ids[pos + 1]) + '</span></button>';
+      var g = groupOf(i), sameGroup = g && g.ids.indexOf(ids[pos + 1]) > -1;
+      return '<button type="button" class="nextbar" data-go="' + ids[pos + 1] + '">' + ic('arrow-down') + '<span>' + (sameGroup ? 'Next topic' : 'Next lesson') + ' &mdash; ' + lTitle(ids[pos + 1]) + '</span></button>';
     }
-    var wait = L[i] && L[i].completeOnQuiz && !isDone(i);
-    return '<div class="endbar" id="endbar"' + (wait ? ' hidden' : '') + '>' + ic('check-circle') + '<span>You have reached the end. You can exit the course now.</span></div>';
+    var wait = holdsGate(i) && !isDone(i);
+    return '<div class="endbar" id="endbar"' + (wait ? ' hidden' : '') + '>' + ic('check-circle') + '<span>' + endText() + '</span></div>';
+  }
+  /* The acknowledgement completes only itself, so the closing note must not
+     tell a learner to exit while other lessons on the path are still open. */
+  function endText() {
+    return pathComplete()
+      ? 'You have reached the end. You can exit the course now.'
+      : 'Acknowledgement submitted. Go back and finish the remaining lessons to complete the course.';
   }
   function stopEndWatch() {
     if (endIo) { endIo.disconnect(); endIo = null; }
@@ -211,13 +303,13 @@
   function watchEnd() {
     stopEndWatch();
     var bar = $('#endbar');
-    if (!bar || bar.hidden || cur < 0 || isDone(cur) || L[cur].completeOnQuiz) return;
+    if (!bar || bar.hidden || cur < 0 || isDone(cur) || holdsGate(cur)) return;
     var top = bar.getBoundingClientRect().top;
     if (top < window.innerHeight - 8) bar.style.marginTop = Math.ceil(window.innerHeight - top + 16) + 'px';
     var startY = window.scrollY;
     function finish() {
       if (window.scrollY <= startY + 8) return;
-      if (cur < 0 || isDone(cur) || L[cur].completeOnQuiz) { stopEndWatch(); return; }
+      if (cur < 0 || isDone(cur) || holdsGate(cur)) { stopEndWatch(); return; }
       if (!bar.isConnected || bar.hidden || !endSeen(bar)) return;
       stopEndWatch();
       markDone(cur);
@@ -232,6 +324,8 @@
   function revealEnd() {
     var bar = $('#endbar');
     if (!bar || !bar.hidden) return;
+    var msg = $('span', bar);
+    if (msg) msg.textContent = endText();
     bar.hidden = false;
     bar.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'nearest' });
   }
@@ -243,10 +337,12 @@
     part = (i >= 0 && !isDone(i)) ? 25 : 0;
     if (i < 0) { stage.innerHTML = coverHTML(); }
     else {
-      stage.innerHTML = heroHTML(i) + '<div class="lbody">' + L[i].html(state.role) + '<div id="end" aria-hidden="true" style="height:1px"></div></div>' + footHTML(i);
+      var grp = groupOf(i);
+      stage.innerHTML = heroHTML(i) + '<div class="lbody">' + (grp ? topicHTML(i, grp) : '') + L[i].html(state.role) + '<div id="end" aria-hidden="true" style="height:1px"></div></div>' + footHTML(i);
       keepWords(stage);
       initWidgets(i);
       observe();
+      spyTabs();
     }
     if (location.hash !== (i < 0 ? '#/cover' : '#/' + (i + 1))) { history.replaceState(null, '', i < 0 ? '#/cover' : '#/' + (i + 1)); }
     if (!noScroll) {
@@ -262,13 +358,44 @@
     }
     if (i >= 0) save();
     drawSidebar();
-    if (i >= 0 && !L[i].completeOnQuiz) paintPart();
+    if (i >= 0 && !holdsGate(i)) paintPart();
     $('#shell').classList.toggle('is-cover', i < 0);
     if (mobile()) { $('#side').classList.remove('is-open'); $('#menu').setAttribute('aria-expanded', 'false'); }
-    document.title = (i < 0 ? '' : L[i].title + ' | ') + 'Time Tracking Compliance';
+    document.title = (i < 0 ? '' : lTitle(i) + ' | ' + (groupOf(i) ? groupOf(i).title + ' | ' : '')) + 'Time Tracking Compliance';
     watchEnd();
   }
+  /* Section tabs: mark the tab of the section currently being read.
+     Every tab uses the same Cisco Cyan (set in styles.css). */
+  var spyOff = null;
+  function spyTabs() {
+    var nav = $('.jump');
+    if (!nav) return;
+    var tabs = $$('a[href^="#l"]', nav).map(function (a) {
+      var s = document.getElementById(a.getAttribute('href').slice(1));
+      return { a: a, s: s };
+    }).filter(function (t) { return t.s; });
+    if (!tabs.length) return;
+    var ticking = false, last = -2;
+    function update() {
+      ticking = false;
+      var line = nav.getBoundingClientRect().bottom + 12, k = -1;
+      tabs.forEach(function (t, n) { if (t.s.getBoundingClientRect().top <= line) k = n; });
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) k = tabs.length - 1;
+      if (k === last) return;
+      last = k;
+      tabs.forEach(function (t, n) {
+        t.a.classList.toggle('on', n === k);
+        if (n === k) t.a.setAttribute('aria-current', 'true'); else t.a.removeAttribute('aria-current');
+      });
+    }
+    function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(update); } }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    spyOff = function () { window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onScroll); };
+    update();
+  }
   function cleanup() {
+    if (spyOff) { spyOff(); spyOff = null; }
     if (io) io.disconnect();
     io = null;
     stopEndWatch();
@@ -292,6 +419,7 @@
     $$('[data-pipe]').forEach(function (el) { W.pipe(el, L[i].data.status); });
     $$('[data-explorer]').forEach(W.explorer);
     $$('[data-quiz]').forEach(function (el) { W.quiz(el, i); });
+    $$('[data-ack]').forEach(function (el) { W.ack(el, i); });
   }
   function setIcon(el, name, html) { el.innerHTML = ic(name) + '<span>' + html + '</span>'; keepWords(el); }
   /* Keep compound words such as "auto-populated" on one line so card text
@@ -311,50 +439,46 @@
     r.style.setProperty('--fill', pct + '%');
   }
 
-  /* Browsers turn an English caption track on by themselves, and they remember that
-     choice for this site. Keep every narrated video's captions off until the learner
-     picks a caption track from the player controls. */
-  function captionsStartOff(video) {
-    var tracks = video.textTracks;
-    var applying = false;
-    var learnerChose = false;
-    var fromControls = false;
-
-    function showing() {
-      for (var i = 0; i < tracks.length; i++) {
-        if (tracks[i].mode === 'showing') return true;
-      }
-      return false;
+  /* Captions for the videos. The cues ship inside videos.js, so they do not
+     depend on fetching a .vtt file (browsers block that when the course is opened
+     from disk), and the player draws them itself, so they also show in full screen.
+     The CC button and the player's own CC menu drive the same text track, and one
+     choice applies to every video. */
+  function bindCaptions(el, video, id) {
+    var btn = $('.cc-btn', el);
+    var key = String(id).replace(/\.mp4$/, '');
+    var cues = (window.VIDEOS && window.VIDEOS[key] && window.VIDEOS[key].captions) || [];
+    if (!btn || !cues.length || !video.addTextTrack || !window.VTTCue) return;
+    var track = video.addTextTrack('captions', 'English', 'en');
+    cues.forEach(function (c) { track.addCue(new VTTCue(c[0], c[1], c[2])); });
+    function paintBtn() {
+      btn.setAttribute('aria-pressed', ccWant ? 'true' : 'false');
+      btn.setAttribute('aria-label', ccWant ? 'Turn captions off' : 'Turn captions on');
+      var word = $('.cc-word', btn);
+      if (word) word.textContent = ccWant ? 'On' : 'Off';
+      btn.classList.toggle('is-on', ccWant);
     }
-    function forceOff() {
-      if (learnerChose || !showing()) return;
-      applying = true;
-      for (var i = 0; i < tracks.length; i++) tracks[i].mode = 'disabled';
-      applying = false;
+    function apply() {
+      var mode = ccWant ? 'showing' : 'hidden';
+      if (track.mode !== mode) track.mode = mode;
+      paintBtn();
     }
-
-    video.addEventListener('pointerdown', function () {
-      fromControls = true;
-      setTimeout(function () { fromControls = false; }, 800);
+    function spread() {
+      $$('[data-video] video').forEach(function (v) { if (v.__applyCc) v.__applyCc(); });
+    }
+    video.__applyCc = apply;
+    btn.addEventListener('click', function () { ccWant = !ccWant; spread(); });
+    /* A choice made in the player's own CC menu counts as the learner's choice. */
+    video.textTracks.addEventListener('change', function () {
+      var shown = track.mode === 'showing';
+      if (shown !== ccWant) { ccWant = shown; spread(); }
     });
-    tracks.addEventListener('addtrack', forceOff);
-    tracks.addEventListener('change', function () {
-      if (applying) return;
-      if (fromControls) { learnerChose = true; return; }
-      forceOff();
-    });
-    video.addEventListener('loadedmetadata', forceOff);
-    video.addEventListener('play', function () {
-      fromControls = false;
-      forceOff();
-    });
-    setTimeout(forceOff, 0);
-    setTimeout(forceOff, 400);
+    apply();
   }
 
   W.video = function (el) {
     var v = $('video', el), chaps = $$('.chap', el);
-    captionsStartOff(v);
+    bindCaptions(el, v, el.dataset.video);
     el.addEventListener('click', function (e) {
       var b = e.target.closest('[data-seek]'); if (!b) return;
       v.currentTime = parseFloat(b.dataset.seek); v.play();
@@ -399,8 +523,14 @@
           if (v.getAttribute('preload') === 'none') { v.preload = 'metadata'; v.load(); }
         });
       });
-      if (el.classList.contains('walks')) el.setAttribute('data-tone', b.getAttribute('data-tone') || 'sky');
-      else noteSeen($$('.tab', el), b);
+      if (el.classList.contains('walks')) {
+        el.setAttribute('data-tone', b.getAttribute('data-tone') || 'sky');
+        $$('.walk-note', el).forEach(function (n) {
+          var on = n.dataset.note === b.dataset.t;
+          n.hidden = !on;
+          if (on) $$('.rv', n).forEach(function (e) { e.classList.add('in'); });
+        });
+      } else noteSeen($$('.tab', el), b);
     }
     el.addEventListener('click', function (e) {
       var b = e.target.closest('.tab'); if (!b || !el.contains(b)) return;
@@ -519,7 +649,7 @@
       if (h < 4) msg = 'Under 4 hours: no required break has been earned yet.';
       else if (h < 5) msg = lead ? 'A full 4-hour block means a 10-minute paid rest break is due. A meal break starts at 5 hours.' : 'You have worked a full 4-hour block, so a 10-minute paid rest break is due. A meal break starts at 5 hours.';
       else if (h <= 10) msg = lead ? 'Past 5 hours: a 30-minute unpaid meal break, and the employee must be completely relieved of duty. Rest breaks (10 min, paid) are due in every 4-hour block and are not entered on the timecard.' : 'Past 5 hours: a 30-minute unpaid meal break, with you completely relieved of duty. Rest breaks (10 min, paid) are due in every 4-hour block and are not entered on your timecard.';
-      else msg = lead ? 'Past 10 hours: a second 30-minute meal break is also due. If a break is involuntarily missed, the employee reports it (rest: the form to you; meal: consecutive hours on the timecard).' : 'Past 10 hours: a second 30-minute meal break is also due. If any break is involuntarily missed, report it (rest: form to your leader; meal: record the hours worked on your timecard).';
+      else msg = lead ? 'Past 10 hours: a second 30-minute meal break is also due. If a break is involuntarily missed, the employee reports it (rest: the form to you; meal: consecutive hours on the timecard).' : 'Past 10 hours: a second 30-minute meal break is also due. If any break is involuntarily missed, report it (rest: follow the steps in the Help Zone article below; meal: record the hours worked on your timecard).';
       setIcon(ver, 'info', msg);
     }
     var moved = false;
@@ -557,6 +687,27 @@
     var moved = false;
     r.addEventListener('input', function () { moved = true; draw(); });
     draw();
+  };
+
+  W.ack = function (el, lessonIdx) {
+    var box = $('[data-ack-box]', el);
+    var btn = $('[data-ack-submit]', el);
+    if (!box || !btn) return;
+    el.addEventListener('submit', function (e) { e.preventDefault(); });
+    function submitted() {
+      box.checked = true;
+      box.disabled = true;
+      btn.disabled = true;
+      btn.textContent = 'Acknowledgement submitted';
+    }
+    if (isDone(lessonIdx)) { submitted(); return; }
+    box.addEventListener('change', function () { btn.disabled = !box.checked; });
+    btn.addEventListener('click', function () {
+      if (!box.checked) return;
+      submitted();
+      markDone(lessonIdx);
+      revealEnd();
+    });
   };
 
   /* --- coached quiz --- */
@@ -677,7 +828,7 @@
     if (zoomBtn) { openZoom(zoomBtn); return; }
     var g = e.target.closest('[data-go]');
     if (g) {
-      if (g.classList.contains('nextbar') && cur >= 0 && !L[cur].completeOnQuiz) markDone(cur);
+      if (g.classList.contains('nextbar') && cur >= 0 && !holdsGate(cur)) markDone(cur);
       show(+g.dataset.go);
       return;
     }

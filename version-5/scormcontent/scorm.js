@@ -1,6 +1,6 @@
 /* SCORM 2004 3rd Edition runtime.
    The course is completed when the learner finishes 80 percent of the lessons
-   on the path they chose. Status is completed / incomplete.
+   on the path they chose and has submitted the acknowledgement. Status is completed / incomplete.
    Success (passed / failed) stays unknown so the LMS reports Complete/Incomplete. */
 (function () {
   var COMPLETION_PERCENT = 80;
@@ -110,8 +110,11 @@
   /* These match the paths in app.js. A lesson id is stored only on the path
      that actually contains it, so finishing the employee path cannot check
      People Leaders, and finishing the leader path cannot check employee lessons. */
-  var EMP_IDS = [0, 1, 2, 3, 4, 5, 6, 8, 9];
-  var LEAD_IDS = [0, 4, 7, 8];
+  var EMP_IDS = [0, 1, 2, 3, 4, 5, 6, 8, 9, 10];
+  var LEAD_IDS = [0, 4, 7, 8, 10];
+  /* The acknowledgement is the last lesson of both paths. A path that contains
+     it is complete only once it has been submitted, whatever the percentage. */
+  var ACK_ID = 10;
   var STATE_VERSION = 3;
 
   function blankState() {
@@ -198,7 +201,8 @@
     set("cmi.exit", "suspend");
     set("cmi.session_time", sessionTime());
     var alreadyComplete = get("cmi.completion_status") === "completed";
-    var met = ids.length > 0 && (doneOnPath / ids.length) >= (COMPLETION_PERCENT / 100);
+    var ackOk = ids.indexOf(ACK_ID) === -1 || current.indexOf(ACK_ID) > -1;
+    var met = ids.length > 0 && ackOk && (doneOnPath / ids.length) >= (COMPLETION_PERCENT / 100);
     set("cmi.completion_status", (alreadyComplete || met) ? "completed" : "incomplete");
     commit();
     return get("cmi.completion_status");

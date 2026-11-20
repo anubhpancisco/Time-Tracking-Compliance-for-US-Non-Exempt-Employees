@@ -1,0 +1,5 @@
+# Local-only: internal notes, source documents, archive, Office lock files
+_archive/
+*.xlsx
+~$*
+version-5/CHANGES.md
