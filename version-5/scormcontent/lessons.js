@@ -35,7 +35,7 @@
     if (!v) return '';
     var chapters = (v.chapters || []).map(function (c) { return '<button type="button" class="chap" data-seek="' + c.start + '">' + c.label + '</button>'; }).join('');
     var tr = (v.transcript || []).map(function (t) { return '<p>' + t + '</p>'; }).join('');
-    var rev = id === 'lead-welcome' ? '?v=sme8' : id === 'lead-breaks' ? '?v=sme4' : id === 'lead-payroll' ? '?v=sme4' : id === 'lead-playbook' ? '?v=sme2' : id === 'lead-rates' ? '?v=sme1' : (id === 'welcome' || id === 'breaks') ? '?v=emp1' : '';
+    var rev = id === 'lead-welcome' ? '?v=sme8' : id === 'lead-breaks' ? '?v=sme5' : id === 'lead-payroll' ? '?v=sme4' : id === 'lead-playbook' ? '?v=sme2' : id === 'lead-rates' ? '?v=sme1' : (id === 'welcome' || id === 'breaks') ? '?v=emp1' : '';
     /* A video that carries its cues in videos.js gets them from app.js as a text
        track, with a Captions button under the player. Reading the .vtt from disk is
        blocked by browsers, so the <track> file is only the fallback for a video
@@ -51,8 +51,16 @@
       '<details class="transcript"><summary>' + ic('file') + '<span><b>Video Transcript</b></span></summary><div class="tr-body">' + tr + '</div></details></div>';
   }
   function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  /* Same expandable "Video Transcript" panel as the authored videos, for a Workday
+     walkthrough that has a transcript in videos.js. */
+  function walkTranscript(file) {
+    var v = (window.VIDEOS || {})[String(file).replace(/\.mp4$/, '')];
+    if (!v || !v.transcript || !v.transcript.length) return '';
+    var tr = v.transcript.map(function (t) { return '<p>' + esc(t) + '</p>'; }).join('');
+    return '<details class="transcript"><summary>' + ic('file') + '<span><b>Video Transcript</b></span></summary><div class="tr-body">' + tr + '</div></details>';
+  }
   function walk(file, title) {
-    return '<div class="band rv"><div class="vid-title">' + ic('play') + ' ' + esc(title) + '<span class="hint">Workday walkthrough</span></div><div class="vid" data-video="' + file + '"><video controls preload="metadata" playsinline aria-label="' + esc(title) + '"><source src="media/' + file + '" type="video/mp4"></video>' + ccBar(file) + '</div></div>';
+    return '<div class="band rv"><div class="vid-title">' + ic('play') + ' ' + esc(title) + '<span class="hint">Workday walkthrough</span></div><div class="vid" data-video="' + file + '"><video controls preload="metadata" playsinline aria-label="' + esc(title) + '"><source src="media/' + file + '" type="video/mp4"></video>' + ccBar(file) + '</div>' + walkTranscript(file) + '</div>';
   }
   /* Two or more walkthroughs share one player. "Video 01: …" becomes a numbered card plus the question. */
   function walks(id, items, verb) {
@@ -68,13 +76,13 @@
     var panels = items.map(function (t, i) {
       var on = i === 0;
       return '<div class="tabpanel" role="tabpanel" id="' + id + '-panel-' + i + '" data-p="' + i + '" aria-labelledby="' + id + '-tab-' + i + '"' + (on ? '' : ' hidden') + '>' +
-        '<div class="vid" data-video="' + t.file + '"><video controls ' + (on ? 'preload="metadata"' : 'preload="none"') + ' playsinline aria-label="' + esc(t.title) + '"><source src="media/' + t.file + '" type="video/mp4"></video>' + ccBar(t.file) + '</div></div>';
+        '<div class="vid" data-video="' + t.file + '"><video controls ' + (on ? 'preload="metadata"' : 'preload="none"') + ' playsinline aria-label="' + esc(t.title) + '"><source src="media/' + t.file + '" type="video/mp4"></video>' + ccBar(t.file) + '</div>' + walkTranscript(t.file) + '</div>';
     }).join('');
     var notes = items.map(function (t, i) {
       if (!t.note) return '';
       return '<div class="walk-note" data-note="' + i + '"' + (i === 0 ? '' : ' hidden') + '>' + t.note + '</div>';
     }).join('');
-    return '<div class="band walks rv" data-tabs="' + id + '" data-tone="sky">' + how('pointer', 'Click', 'the tabs to ' + (verb || 'view') + ' both Workday walkthrough videos.') +
+    return '<div class="band walks rv" data-tabs="' + id + '" data-tone="sky">' + how('pointer', 'Click', 'the tabs to ' + (verb || 'watch') + ' both Workday walkthrough videos.') +
       '<div class="tablist" role="tablist" aria-label="Workday walkthroughs">' + tabsHtml + '</div><div class="walk-stage">' + panels + '</div>' + notes + '</div>';
   }
   function frame(file, title, zoom) {
@@ -133,7 +141,7 @@
   window.LESSONS = [
     /* ------------------------------------------------------------------ 1 */
     {
-      title: 'Introduction & Purpose', titleLead: 'Introduction & Purpose', short: 'What & why', mins: 2, minsLead: 1, counted: true, roles: ['emp', 'lead'], hero: 'stock-image-3.jpg',
+      title: 'Introduction & Purpose', titleLead: 'Introduction & Purpose', short: 'What & why', mins: 2, minsLead: 1, roles: ['emp', 'lead'], hero: 'stock-image-3.jpg',
       goals: ['Define time tracking in one sentence', 'Know why Cisco requires it'],
       goalsLead: ['See what this leader path covers', 'Know your role in reviewing your team’s timecards'],
       html: function (role) {
@@ -187,7 +195,7 @@
     },
     /* ------------------------------------------------------------------ 5 */
     {
-      title: 'Policy & Process Overview', titleLead: 'Time Tracking Essentials for People Leaders', short: 'Policy overview', mins: 9, minsLead: 5, counted: true, roles: ['emp', 'lead'], hero: 'stock-image-5.jpg',
+      title: 'Policy & Process Overview', titleLead: 'Time Tracking Essentials for People Leaders', short: 'Policy overview', mins: 9, minsLead: 5, roles: ['emp', 'lead'], hero: 'stock-image-5.jpg',
       goals: ['Edit your timecard and record time off and on-call', 'Know when meal and rest breaks are due', 'Apply the 8-hour, 40-hour and 12-hour pay rules'],
       goalsLead: ['See how an employee timecard works', 'Know the meal and rest breaks your team must take', 'Apply the 8-hour, 40-hour and 12-hour pay rules'],
       html: function (role) {
@@ -201,12 +209,12 @@
             sec('l5-b', 'B', 'Meal and Rest Breaks', '',
               video('lead-breaks', 'Watch: Meal and rest breaks') +
               callout('info tint', 'info', '<p>During a meal period the employee must be completely relieved of duty and allowed to leave the premises. Otherwise that time is hours worked. A rest break cannot be skipped, banked, or saved for future use.</p>') +
-              walk('how-missed-meal.mp4', 'How does an employee report an involuntarily missed meal break?') +
+              walk('how-missed-meal.mp4', 'Watch: How an employee reports an involuntarily missed meal break') +
               links([[URL_RESTFORM, 'Notice of Involuntarily Missed Rest Break form', 'Employees give this form to you for review, approval, and signature']])) +
             sec('l5-c', 'C', 'Overtime', '',
               video('lead-rates', 'Watch: 8, 40, and your approval') +
               callout('warn', 'alert', '<p><strong>No time to ask first?</strong> If unusual or unforeseen circumstances stop an employee getting your approval, they report the overtime in Workday immediately and email you as soon as possible.</p>') +
-              walk('how-record-overtime.mp4', 'How does an employee record overtime?') +
+              walk('how-record-overtime.mp4', 'Watch: How an employee records overtime') +
               links([[URL_POL, 'Time Tracking Policy for US Non-Exempt Employees', 'Additional overtime scenarios'], [URL_HOL, 'Cisco-observed US holidays', 'Hours worked on these days are overtime']]));
         }
         return jump([['l5-a', 'Timecard'], ['l5-b', 'Meal and Rest Breaks'], ['l5-c', 'Overtime'], ['l5-d', 'On-Call'], ['l5-q', 'Quick Check']]) +
@@ -230,7 +238,7 @@
               '<div class="verdict good" data-verdict></div>') +
             callout('info tint', 'info', lead
               ? '<p><strong>Logging a meal break:</strong> the employee chooses “Meal” as the reason when they enter their “Out” time.</p>'
-              : '<p><strong>Logging a meal break:</strong> choose “Meal” as the reason when you enter your “Out” time.</p>') +
+              : '<p><strong>Logging a meal break:</strong> Choose “Meal” as the reason when you enter your “Out” time.</p>') +
             walk('how-missed-meal.mp4', 'Watch: How do I report an involuntarily missed meal break?') +
             links([[URL_RESTREPORT, 'How do I report an involuntary missed rest break', 'Step-by-step instructions in the Help Zone article']])) +
           sec('l5-c', 'C', 'Overtime', '',
@@ -295,10 +303,10 @@
       title: 'Understanding Time Card Alerts & Notifications', short: 'Alerts & notifications', mins: 4, roles: ['emp'], hero: 'stock-image-3.jpg',
       goals: ['Recognize the four Workday alerts', 'Fix an over-8-hour day correctly'],
       html: function () {
-        return jump([['l7-remind', 'Reminders'], ['l7-overlap', 'Overlap'], ['l7-daily', 'Daily Hours'], ['l7-oncall', 'On-Call'], ['l7-missing', 'Missing Time'], ['l7-q', 'Quick Check']]) +
+        return jump([['l7-intro', 'Overview'], ['l7-remind', 'Reminders'], ['l7-overlap', 'Overlap'], ['l7-daily', 'Daily Hours'], ['l7-oncall', 'On-Call'], ['l7-missing', 'Missing Time'], ['l7-q', 'Quick Check']]) +
           sec('l7-intro', '', 'Understanding Time Card Alerts & Notifications', '',
-            video('alerts', 'Watch: Fix it before payday')) +
-          '<div class="lead-in rv"><p>Workday sends an alert when a timecard discrepancy could delay pay. Read what each one means, then look at the alert itself.</p></div>' +
+            video('alerts', 'Watch: Time Card Alerts & Notifications Overview')) +
+          callout('info tint', 'info', '<p>Workday sends an alert when a timecard discrepancy could delay pay. Read what each one means, then look at the alert itself.</p>') +
           sec('l7-remind', 'A', 'Automated Reminders', '',
             '<p>Employees receive an automated email every other Thursday morning, ahead of that evening’s automatic submission. The reminder is there so you can review the timecard and confirm every recorded hour before the system submits it.</p>') +
           sec('l7-overlap', 'B', 'Overlapping Time Off and Hours Worked', '',
@@ -331,7 +339,7 @@
     },
     /* ------------------------------------------------------------------ 8 */
     {
-      title: 'Actions & Deadlines for People Leaders', short: 'Actions & deadlines', mins: 4, minsLead: 4, counted: true, roles: ['lead'], hero: 'stock-image-2.jpg',
+      title: 'Actions & Deadlines for People Leaders', short: 'Actions & deadlines', mins: 4, minsLead: 4, roles: ['lead'], hero: 'stock-image-2.jpg',
       goals: ['Follow the leader playbook', 'Assign a delegate and approve timecards before Sunday', 'Handle discrepancies through conversation, not Send Back'],
       html: function () {
         return jump([['l8-watch', 'The Leader Playbook'], ['l8-week', 'Explore the Week'], ['l8-delegate', 'Cover Your Absence'], ['l8-approve', 'Before the Sunday Deadline']]) +
@@ -339,7 +347,7 @@
             video('lead-playbook', 'Watch: The leader playbook') +
             callout('info tint', 'info', '<p><strong>Overlap alerts.</strong> Workday alerts you when hours worked overlap time off, and when on-call standby overlaps on-call hours worked. Resolve those discrepancies promptly.</p>')) +
           sec('l8-week', '', 'Explore the Week', '',
-            video('lead-payroll', 'Watch: One payroll week')) +
+            video('lead-payroll', 'Watch: Payroll week overview')) +
           sec('l8-delegate', 'A', 'Cover Your Absence', 'Assign a delegate',
             '<div class="do-shots">' +
             frame('manage-delegation-01.png', 'Workday: open My Tasks and Manage Delegations', true) + frame('manage-delegation-02.png', 'Workday: manage delegations', true) +
@@ -355,7 +363,7 @@
     /* ------------------------------------------------------------------ 9 */
     {
       title: 'Resources & Enablement', titleLead: 'Resources & Enablement', kicker: 'Resources', short: 'Resources', mins: 1, minsLead: 1, roles: ['emp', 'lead'], hero: 'stock-image-5.jpg',
-      goals: ['Know where to find tools, policies and help'],
+      goals: ['Know where to find tools, policies, and get help'],
       html: function (role) {
         var lead = role === 'lead';
         var ico = function (cls, name) { return '<span class="ico' + (cls ? ' ' + cls : '') + '" style="margin:0;width:44px;height:44px;font-size:22px">' + ic(name) + '</span>'; };
@@ -395,7 +403,7 @@
       goalsLead: ['Confirm your responsibility to review timecards for accuracy and compliance'],
       html: function (role) {
         var text = role === 'lead'
-          ? 'I acknowledge that I have completed the training for leaders of US non-exempt employees. I understand my responsibility to review timecards and ensure that they accurately reflect my employees\' actual work hours to maintain compliance with Cisco policy and US FLSA requirements.'
+          ? 'I acknowledge that I have completed the training for leaders of US non-exempt employees. I understand my responsibility to review timecards and ensure that they accurately reflect my employees’ actual work hours to maintain compliance with Cisco policy and US FLSA requirements.'
           : 'I acknowledge that I have completed the US Non-Exempt Employee Training. I understand my status as a non-exempt employee and my responsibility to accurately track and submit all hours worked in Workday in accordance with Cisco policy and US labor laws.';
         return sec('l11-ack', '', 'Acknowledgement', 'Confirm your understanding',
           callout('warn', 'alert', '<p><strong>Pending Legal approval.</strong> The statement below is the suggested SME wording and is not final legal language.</p>') +
@@ -417,8 +425,8 @@
     ],
     l4: [
       { q: 'How does consistent time tracking support Cisco’s legal and fair compensation commitments?', opts: [
-        O('It ensures Cisco remains compliant with labor laws, accurately calculates overtime pay while supporting employees\' wellbeing.', 1, 'Correct. Accurate records keep Cisco compliant with labor laws, make sure overtime is paid correctly, and support employee well-being.'),
-        O('It allows for detailed project budgeting and departmental expense tracking for the fiscal year', 0, 'Time tracking is not a budgeting tool. It records the hours you work so you are paid correctly and Cisco stays compliant.'),
+        O('It ensures Cisco remains compliant with labor laws, accurately calculates overtime pay, and supports employees’ well-being.', 1, 'Correct. Accurate records keep Cisco compliant with labor laws, make sure overtime is paid correctly, and support employee well-being.'),
+        O('It allows for detailed project budgeting and departmental expense tracking for the fiscal year.', 0, 'Time tracking is not a budgeting tool. It records the hours you work so you are paid correctly and Cisco stays compliant.'),
         O('It is a suggested practice that helps employees keep a personal record of their own hours for better time management.', 0, 'It is not optional. The Fair Labor Standards Act requires Cisco to track all hours worked by non-exempt employees.')] }
     ],
     l6: [

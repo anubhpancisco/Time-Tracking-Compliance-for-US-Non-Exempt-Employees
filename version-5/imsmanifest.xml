@@ -29,16 +29,16 @@
     <resource identifier="sco-1" type="webcontent" adlcp:scormType="sco" href="scormcontent/index.html">
       <file href="ScormEnginePackageProperties.xml"/>
       <file href="scormcontent/app.js"/>
+      <file href="scormcontent/assets/US_Timecard_Actions_and_Deadlines.pdf"/>
       <file href="scormcontent/assets/alert-exceeding-daily-hours.jpg"/>
       <file href="scormcontent/assets/alert-missing-time.jpg"/>
       <file href="scormcontent/assets/alert-oncall-double-entry.jpg"/>
       <file href="scormcontent/assets/alert-overlap.jpg"/>
+      <file href="scormcontent/assets/cover-photo.jpg"/>
       <file href="scormcontent/assets/how-to-check-if-you-are-non-exempt.png"/>
       <file href="scormcontent/assets/how-to-check-if-your-team-is-non-exempt.png"/>
       <file href="scormcontent/assets/manage-delegation-01.png"/>
       <file href="scormcontent/assets/manage-delegation-02.png"/>
-      <file href="scormcontent/assets/US_Timecard_Actions_and_Deadlines_Cheat_sheet.pdf"/>
-      <file href="scormcontent/assets/cover-photo.jpg"/>
       <file href="scormcontent/assets/stock-image-1.jpg"/>
       <file href="scormcontent/assets/stock-image-2.jpg"/>
       <file href="scormcontent/assets/stock-image-3.jpg"/>
@@ -58,6 +58,16 @@
       <file href="scormcontent/media/breaks-poster.jpg"/>
       <file href="scormcontent/media/breaks.mp4"/>
       <file href="scormcontent/media/breaks.vtt"/>
+      <file href="scormcontent/media/how-approve-timecard.mp4"/>
+      <file href="scormcontent/media/how-bulk-approve.mp4"/>
+      <file href="scormcontent/media/how-missed-meal.mp4"/>
+      <file href="scormcontent/media/how-oncall-eligible.mp4"/>
+      <file href="scormcontent/media/how-record-oncall.mp4"/>
+      <file href="scormcontent/media/how-record-overtime.mp4"/>
+      <file href="scormcontent/media/how-submit-timecard.mp4"/>
+      <file href="scormcontent/media/how-timecard-status.mp4"/>
+      <file href="scormcontent/media/how-update-timecard.mp4"/>
+      <file href="scormcontent/media/how-view-timecard.mp4"/>
       <file href="scormcontent/media/lead-breaks-poster.jpg"/>
       <file href="scormcontent/media/lead-breaks.mp4"/>
       <file href="scormcontent/media/lead-breaks.vtt"/>
@@ -98,16 +108,6 @@
       <file href="scormcontent/media/workday-poster.jpg"/>
       <file href="scormcontent/media/workday.mp4"/>
       <file href="scormcontent/media/workday.vtt"/>
-      <file href="scormcontent/media/how-approve-timecard.mp4"/>
-      <file href="scormcontent/media/how-bulk-approve.mp4"/>
-      <file href="scormcontent/media/how-missed-meal.mp4"/>
-      <file href="scormcontent/media/how-oncall-eligible.mp4"/>
-      <file href="scormcontent/media/how-record-oncall.mp4"/>
-      <file href="scormcontent/media/how-record-overtime.mp4"/>
-      <file href="scormcontent/media/how-submit-timecard.mp4"/>
-      <file href="scormcontent/media/how-timecard-status.mp4"/>
-      <file href="scormcontent/media/how-update-timecard.mp4"/>
-      <file href="scormcontent/media/how-view-timecard.mp4"/>
       <file href="scormcontent/scorm.js"/>
       <file href="scormcontent/styles.css"/>
     </resource>

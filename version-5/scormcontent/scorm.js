@@ -1,7 +1,9 @@
 /* SCORM 2004 3rd Edition runtime.
-   The course is completed when the learner finishes 80 percent of the lessons
-   on the path they chose and has submitted the acknowledgement. Status is completed / incomplete.
-   Success (passed / failed) stays unknown so the LMS reports Complete/Incomplete. */
+   The course is completed when the learner has reviewed at least 80 percent of the lessons on the path they
+   chose (app.js decides what "reviewed" means for each lesson) and has submitted the acknowledgement,
+   which the player only allows after every other lesson is reviewed. Status is completed / incomplete.
+   Success (passed / failed) stays unknown and no score is sent, so the LMS reports Complete/Incomplete only.
+   SCORM.exit() backs the "Exit course" link: it saves, commits and terminates the session, then closes the window. */
 (function () {
   var COMPLETION_PERCENT = 80;
   var started = Date.now();
@@ -99,10 +101,6 @@
   if (!completion || completion === "not attempted" || completion === "unknown") {
     set("cmi.completion_status", "incomplete");
     set("cmi.success_status", "unknown");
-    set("cmi.score.min", "0");
-    set("cmi.score.max", "100");
-    set("cmi.score.raw", "0");
-    set("cmi.score.scaled", "0");
     set("cmi.progress_measure", "0");
     commit();
   }
@@ -141,8 +139,6 @@
     set("cmi.location", "0");
     set("cmi.completion_status", "incomplete");
     set("cmi.success_status", "unknown");
-    set("cmi.score.raw", "0");
-    set("cmi.score.scaled", "0");
     set("cmi.progress_measure", "0");
     set("cmi.exit", "suspend");
     commit();
@@ -193,10 +189,6 @@
     set("cmi.suspend_data", payload);
     set("cmi.location", String(state.location));
     set("cmi.progress_measure", measure);
-    set("cmi.score.min", "0");
-    set("cmi.score.max", "100");
-    set("cmi.score.raw", String(percent));
-    set("cmi.score.scaled", measure);
     set("cmi.success_status", "unknown");
     set("cmi.exit", "suspend");
     set("cmi.session_time", sessionTime());
@@ -219,7 +211,17 @@
 
   window.addEventListener("pagehide", finish);
 
+  /* "Exit course": save, end the SCORM session, then try to close the player window. A browser only lets a
+     script close a window that was opened by a script, so the caller shows a "you can close this window"
+     message when the window is still open afterwards. */
+  function exitCourse() {
+    finish();
+    try { window.close(); } catch (err) { /* not allowed to close this window */ }
+    try { if (window.top && window.top !== window) window.top.close(); } catch (err2) { /* cross-origin frame */ }
+  }
+
   window.SCORM = {
+    exit: exitCourse,
     preview: preview,
     completion: COMPLETION_PERCENT / 100,
     get: get,

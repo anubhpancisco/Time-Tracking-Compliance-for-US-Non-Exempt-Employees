@@ -3,3 +3,4 @@ _archive/
 *.xlsx
 ~$*
 version-5/CHANGES.md
+*.zip
